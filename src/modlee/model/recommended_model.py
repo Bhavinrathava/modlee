@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.optim import lr_scheduler
 
 
-class RecommendedModel(ModleeModel):
+class RecommendedModelBase(ModleeModel):
     """
     A ready-to-train ModleeModel that wraps around a recommended model from the recommender.
     Contains default functions for training.

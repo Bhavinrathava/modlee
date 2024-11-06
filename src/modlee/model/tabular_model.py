@@ -1,5 +1,5 @@
 """ 
-Modlee model for images. 
+Modlee model for tabular. 
 """
 from modlee.model import ModleeModel
 
