@@ -8,7 +8,6 @@ import modlee
 from modlee.utils import get_model_size, typewriter_print
 from modlee.converter import Converter
 from modlee import dataframes
-from modlee import dataframes
 
 modlee_converter = Converter()
 
@@ -90,7 +89,7 @@ class Recommender(object):
         if modlee.data_metafeatures.module_available:
             logging.info("Analyzing dataset based on data metafeatures...")
             
-            ret = data_metafeature_cls(dataloader, testing=True)
+            ret = data_metafeature_cls(dataloader)
             ret = ret.features
 
             return ret

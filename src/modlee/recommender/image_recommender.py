@@ -1,7 +1,6 @@
 from modlee.data_metafeatures import DataMetafeatures
 from .recommender import Recommender
-from modlee.model import RecommendedModelBase
-from .utils import *
+from modlee.model import RecommendedModelFactory
 import logging
 import torch
 import torch.nn as nn
@@ -53,7 +52,9 @@ class ImageRecommender(Recommender):
                 except:
                     torch.nn.init.normal_(param)
 
-            self.model = create_recommended_model(self.modality, self.task, model=model, loss_fn=self.loss_fn)
+            model_factory = RecommendedModelFactory(modality = self.modality, task = self.task, model=model, loss_fn=self.loss_fn)
+            self.model = model_factory.get_model()
+            self.model.data_mfe = self.metafeatures
 
             self.code_text = self.get_code_text()
             self.model_code = modlee_converter.onnx_text2code(self.model_text)

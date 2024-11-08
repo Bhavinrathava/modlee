@@ -320,12 +320,42 @@ class DataMetafeaturesCallback(ModleeCallback):
 
     def on_train_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
 
-        self._log_data_metafeatures_dataloader(trainer.train_dataloader)
+        if hasattr(trainer.model, 'is_recommended_modlee_model'):
+            self._log_data_mfe_recommender(trainer)
+
+        else:
+            self._log_data_metafeatures_dataloader(trainer.train_dataloader)
+
 
         self._log_output_size(trainer, pl_module)
 
         return super().on_train_start(trainer, pl_module)
 
+    def _log_data_mfe_recommender(self, trainer) -> None:
+        """
+        Log data metafeatures with a dataloader.
+
+        :param dataloader: The dataloader.
+        """
+        if trainer.model.data_mfe:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+
+                logging.info(f"Logging data metafeatures with {self.DataMetafeatures} from recommender analysis")
+                
+                # Pass the dataloader to the TimeseriesDataMetafeatures
+                # data_mf = self.DataMetafeatures(dataloader=dataloader)  # Ensure dataloader is passed
+                
+                # mlflow.log_dict(data_mf.stats_rep, "stats_rep")
+                # data_mf_dict = {
+                #     **data_mf.properties,
+                #     **data_mf.mfe,
+                # }
+                mlflow.log_dict(_make_serializable(trainer.model.data_mfe), "data_metafeatures")
+        else:
+            logging.warning("Cannot log data from recommender analysis, running calculations again")
+            self._log_data_metafeatures_dataloader(trainer.train_dataloader)
+    
     def _log_data_metafeatures(self, data, targets=[]) -> None:
         """
         Log the data metafeatures from input data and targets.

@@ -85,7 +85,7 @@ def test_image_classifer(img_size,recommended_model,modlee_trainer):
         transforms.Resize((img_size[1], img_size[2])),
         transforms.Grayscale(num_output_channels=img_size[0]),  # Convert images to RGB format
         transforms.ToTensor(),          # Convert images to tensors (PyTorch format)
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize images with mean and std deviation
+        transforms.Normalize(0.5, 0.5)  # Normalize images with mean and std deviation
     ])
 
     train_dataset = MNIST( #this command gets the MNIST images
@@ -122,7 +122,7 @@ def test_image_classifer(img_size,recommended_model,modlee_trainer):
     
     # modlee_trainer = True
     if modlee_trainer == True:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=10)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=2)
         trainer.fit(
             model=modlee_model,
             train_dataloaders=train_dataloader,
@@ -130,7 +130,7 @@ def test_image_classifer(img_size,recommended_model,modlee_trainer):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=10)
+            trainer = pl.Trainer(max_epochs=2)
             trainer.fit(
                 model=modlee_model,
                 train_dataloaders=train_dataloader,
