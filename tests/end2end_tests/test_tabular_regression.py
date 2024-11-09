@@ -5,9 +5,9 @@ import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 import pytest
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 
-device = torch.device('mps')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 def generate_dummy_tabular_data_regression(num_samples=100, num_features=10):

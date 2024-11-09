@@ -4,10 +4,10 @@ import modlee
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 import pytest
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 import pandas as pd
 
-device = torch.device('cpu')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 def load_ecg200_from_txt(file_path):
@@ -136,7 +136,7 @@ def test_classifier(num_features, seq_length, num_classes, dataset_type, recomme
     if recommended_model:
         recommender = modlee.recommender.MultivariateTimeSeriesClassifier()  
         recommender.fit(train_dataloader)
-        modlee_model = recommender.model
+        modlee_model = recommender.model.to(device)
         print(f"\nRecommended model: \n{modlee_model}")
     else:
         if model_type == 'multivariate':

@@ -5,14 +5,14 @@ import pytest
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 from torch import nn
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 
-device = torch.device('cpu')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 def generate_dummy_data(num_samples=100, img_size=(3, 32, 32)):
-    X = torch.randn(num_samples, *img_size, device=device, dtype=torch.float32)  
-    y = torch.randn(num_samples, device=device, dtype=torch.float32) 
+    X = torch.randn(num_samples, *img_size, dtype=torch.float32)  
+    y = torch.randn(num_samples, dtype=torch.float32) 
     return X, y
 
 class ModleeImageRegression(modlee.model.ImageRegressionModleeModel):
@@ -76,7 +76,7 @@ def test_model_training(num_samples, img_size, recommended_model, modlee_trainer
     if recommended_model:
         recommender = modlee.recommender.ImageRegressionRecommender() #placeholder
         recommender.fit(train_dataloader)
-        modlee_model = recommender.model
+        modlee_model = recommender.model.to(device)
         print(f"\nRecommended model: \n{modlee_model}")
     else:
         modlee_model = ModleeImageRegression(img_size=img_size).to(device)

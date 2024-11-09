@@ -6,9 +6,9 @@ import lightning.pytorch as pl
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch import nn
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 
-device = torch.device('cpu')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 def add_noise(img, noise_level=0.1):
@@ -106,7 +106,7 @@ def test_denoising_model_training(noise_level, img_size, recommended_model, modl
     if recommended_model:
         recommender = modlee.recommender.ModleeDenoisingModel()  
         recommender.fit(train_dataloader)
-        modlee_model = recommender.model
+        modlee_model = recommender.model.to(device)
         print(f"\nRecommended model: \n{modlee_model}")
     else:
         modlee_model = ModleeDenoisingModel(img_size=img_size).to(device)

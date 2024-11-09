@@ -6,9 +6,9 @@ import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 import pytest
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 
-device = torch.device('cpu')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 def generate_dummy_time_series_data(num_samples=1000, seq_length=20, num_features=10):
@@ -101,7 +101,7 @@ def test_multivariate_time_series_regressor(num_features, seq_length, recommende
     if recommended_model:
         recommender = modlee.recommender.TimeSeriesRegressionRecommender()  # Placeholder for actual recommender
         recommender.fit(train_dataloader)
-        modlee_model = recommender.model
+        modlee_model = recommender.model.to(device)
         print(f"\nRecommended model: \n{modlee_model}")
     else:
         if model_type == 'multivariate':

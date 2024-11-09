@@ -7,10 +7,10 @@ from torch.utils.data import DataLoader, Dataset
 from torch import nn
 from torchvision import transforms
 from PIL import Image
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 import pandas as pd
 
-device = torch.device('cpu')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 AGE_GROUPS = {'YOUNG': 0, 'MIDDLE': 1, 'OLD': 2}
@@ -160,7 +160,7 @@ def test_model_training(img_size, recommended_model, modlee_trainer, dataset):
     if recommended_model:
         recommender = modlee.recommender.ImageRegressionRecommender() 
         recommender.fit(train_dataloader)
-        modlee_model = recommender.model
+        modlee_model = recommender.model.to(device)
     else:
         modlee_model = ModleeImageRegression(img_size=img_size).to(device)
 

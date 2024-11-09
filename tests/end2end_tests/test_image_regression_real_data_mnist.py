@@ -6,7 +6,9 @@ from torch.utils.data import DataLoader
 from torch import nn
 import modlee
 import lightning.pytorch as pl
-from utils import check_artifacts
+from utils import check_artifacts, get_device
+
+device = get_device()
 
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
@@ -63,7 +65,7 @@ class ModleeImageRegression(modlee.model.ImageRegressionModleeModel):
 def train_model(dataset_name='mnist'):
     train_dataloader, test_dataloader = load_dataset(dataset_name)
     
-    modlee_model = ModleeImageRegression(img_size=(1, 32, 32)).to(torch.device('cpu'))
+    modlee_model = ModleeImageRegression(img_size=(1, 32, 32)).to(device)
 
     trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
     trainer.fit(

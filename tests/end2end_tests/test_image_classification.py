@@ -11,8 +11,8 @@ device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 def generate_dummy_data(num_samples=100, num_classes=2, img_size=(3, 32, 32)):
-    X = torch.randn(num_samples, *img_size, device=device, dtype=torch.float32)  
-    y = torch.randint(0, num_classes, (num_samples,), device=device, dtype=torch.long) 
+    X = torch.randn(num_samples, *img_size, dtype=torch.float32)  
+    y = torch.randint(0, num_classes, (num_samples,), dtype=torch.long) 
     return X, y
 
 class ModleeImageClassification(modlee.model.ImageClassificationModleeModel):
@@ -98,7 +98,7 @@ def test_model_training(num_samples,img_size,num_classes,recommended_model,modle
     if recommended_model == True:
         recommender = modlee.recommender.ImageClassificationRecommender(num_classes=num_classes)
         recommender.fit(train_dataloader)
-        modlee_model = recommender.model
+        modlee_model = recommender.model.to(device)
         print(f"\nRecommended model: \n{modlee_model}")
     else:
         modlee_model = ModleeImageClassification(num_classes=num_classes, img_size=img_size).to(device)
@@ -126,4 +126,4 @@ def test_model_training(num_samples,img_size,num_classes,recommended_model,modle
 
 if __name__ == "__main__":
 
-    test_model_training(100,(3, 32, 32),3,False,True)
+    test_model_training(100,(3, 32, 32),3,True,True)

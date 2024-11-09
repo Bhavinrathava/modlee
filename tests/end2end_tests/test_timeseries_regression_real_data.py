@@ -5,10 +5,10 @@ import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 import pytest
 import pandas as pd
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 from sklearn.model_selection import train_test_split
 
-device = torch.device('cpu')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 def load_shampoo_data(file_path, seq_length):
@@ -162,7 +162,7 @@ def test_time_series_regression(input_dim, seq_length, dataset_type, model_class
     if recommended_model:
         recommender = modlee.recommender.MultivariateTimeSeriesRegressor()  # Placeholder for actual recommender
         recommender.fit(train_dataloader)
-        model = recommender.model
+        model = recommender.model.to(device)
     else:
         model = model_class(input_dim=input_dim, seq_length=seq_length).to(device) 
     

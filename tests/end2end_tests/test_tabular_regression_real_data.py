@@ -6,9 +6,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.datasets import fetch_california_housing, load_diabetes, fetch_openml
 from sklearn.model_selection import train_test_split
 import pytest
-from utils import check_artifacts
+from utils import check_artifacts, get_device
 
-device = torch.device('mps')
+device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
 
 def load_california_housing_data():
