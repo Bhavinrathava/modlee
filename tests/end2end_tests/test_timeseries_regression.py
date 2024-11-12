@@ -1,5 +1,3 @@
-
-import torch
 import os
 import modlee
 import lightning.pytorch as pl
@@ -7,7 +5,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 import pytest
 from utils import check_artifacts, get_device
-from utils_timeseries import generate_dummy_time_series_data
+from utils_timeseries import generate_dummy_time_series_data_regression
 from utils_timeseries import TransformerTimeSeriesRegressor, MultivariateTimeSeriesRegressor
 
 device = get_device()
@@ -27,7 +25,7 @@ model_list = [TransformerTimeSeriesRegressor, MultivariateTimeSeriesRegressor]
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
 @pytest.mark.parametrize("model_class", model_list)
 def test_time_series_regression(num_features, seq_length, modlee_trainer, model_class):
-    X, y = generate_dummy_time_series_data(num_samples=1000, seq_length=seq_length, num_features=num_features)
+    X, y = generate_dummy_time_series_data_regression(num_samples=1000, seq_length=seq_length, num_features=num_features)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     train_dataset = TensorDataset(X_train, y_train)

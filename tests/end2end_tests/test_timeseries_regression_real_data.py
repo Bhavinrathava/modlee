@@ -1,10 +1,8 @@
-import torch
 import os
 import modlee
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 import pytest
-import pandas as pd
 from utils import check_artifacts, get_device
 from utils_timeseries import load_stock_data, load_power_consumption_data, load_shampoo_data
 from utils_timeseries import TransformerTimeSeriesRegressor, MultivariateTimeSeriesRegressor
