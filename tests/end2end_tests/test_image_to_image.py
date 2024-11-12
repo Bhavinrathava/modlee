@@ -8,7 +8,7 @@ from utils_image import generate_dummy_image_data_image_to_image
 from utils_image import ModleeImageToImageModel
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 @pytest.mark.parametrize("num_samples", [100])
 @pytest.mark.parametrize("img_size", [(3, 32, 32), (1, 28, 28), (3, 64, 64), (6, 128, 128)])

@@ -8,7 +8,7 @@ from utils_timeseries import load_ecg200_from_txt, load_beef_from_txt, load_car_
 from utils_timeseries import MultivariateTimeSeriesClassifier, TransformerTimeSeriesClassifier
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 modlee_trainer_list = [True, False]
 model_list = [MultivariateTimeSeriesClassifier, TransformerTimeSeriesClassifier]

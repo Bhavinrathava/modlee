@@ -8,7 +8,7 @@ from utils_image import BeautyRatingDataset, PolygonDataset, AgeDataset
 from utils_image import ModleeImageRegression
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 @pytest.mark.parametrize("img_size", [(3, 32, 32), (3, 64, 64), (3, 128, 128)])
 @pytest.mark.parametrize("modlee_trainer", [True, False])

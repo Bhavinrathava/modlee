@@ -8,7 +8,7 @@ from utils_image import generate_dummy_data_regression
 from utils_image import ModleeImageRegression
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 num_samples_list = [100]
 img_size_list = [(3, 32, 32), (1, 16, 16), (6, 16, 16)]

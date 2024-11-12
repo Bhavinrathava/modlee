@@ -9,7 +9,7 @@ from utils_timeseries import TransformerTimeSeriesRegressor, MultivariateTimeSer
 from sklearn.model_selection import train_test_split
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
     
 model_list = [TransformerTimeSeriesRegressor, MultivariateTimeSeriesRegressor]
 modlee_trainer_list = [True, False]

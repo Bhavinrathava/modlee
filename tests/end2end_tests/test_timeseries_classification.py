@@ -9,7 +9,7 @@ from utils_timeseries import generate_dummy_time_series_data_classification
 from utils_timeseries import MultivariateTimeSeriesClassifier, SimpleTransformerModel
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 parameter_combinations = [
     (5, 3, 3), 

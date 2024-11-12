@@ -9,7 +9,7 @@ from utils_tabular import load_california_housing_data, load_diabetes_data, load
 from utils_tabular import TabularRegression
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"))
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 modlee_trainer_list = [True,False]
 
