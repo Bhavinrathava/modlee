@@ -9,7 +9,6 @@ import torchvision
 import modlee
 from modlee.converter import Converter
 from modlee.utils import get_model_size, typewriter_print
-from .utils import *
 modlee_converter = Converter()
 
 
@@ -52,8 +51,6 @@ class TabularRecommender(Recommender):
                 except:
                     torch.nn.init.normal_(param)
 
-            # self.model = RecommendedModel(model, loss_fn=self.loss_fn, modality=self.modality, task = self.task)
-            #self.model = create_recommended_model()
             model_factory = RecommendedModelFactory(modality = self.modality, task = self.task, model=model, loss_fn=self.loss_fn)
             self.model = model_factory.get_model()
 
