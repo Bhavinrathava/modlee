@@ -559,9 +559,9 @@ class DataMetafeatures(object):
         self.properties = self.get_properties()
 
         # general and independent of any data type or ml task
-        self.stats_rep = self.get_features()
+        #self.stats_rep = self.get_features()
         # TODO - deprecated "stats_rep" for "features"
-        self.features = self.stats_rep
+        #self.features = self.stats_rep
         # breakpoint()
         self.features = {
             # **self.embedding,
@@ -571,7 +571,7 @@ class DataMetafeatures(object):
         # self.features = self._make_serializable(self.features)
 
        # self.stats_rep.update(self.mfe_features)
-        self._serializable_stats_rep = self._make_serializable(self.stats_rep)
+        #self._serializable_stats_rep = self._make_serializable(self.stats_rep)
 
     def get_raw_batch_elements(self):
         """
