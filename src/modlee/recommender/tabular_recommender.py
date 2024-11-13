@@ -14,7 +14,7 @@ modlee_converter = Converter()
 
 class TabularRecommender(Recommender):
     """
-    Recommender for image models.
+    Recommender for tabular models.
     """
 
     def __init__(self, *args, **kwargs):
