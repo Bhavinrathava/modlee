@@ -149,4 +149,3 @@ def test_text_to_text(num_samples):
     artifacts_path = os.path.join(last_run_path, 'artifacts')
     print(last_run_path)
     check_artifacts(artifacts_path)
-

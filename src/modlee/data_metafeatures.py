@@ -978,6 +978,7 @@ class ModleeStandardizedTextDataset(Dataset):
 class TextDataMetafeatures(DataMetafeatures):
     def __init__(self, dataloader, *args, **kwargs):
         # Standard tokenizer for standardized text processing
+        self.stats_rep = self.get_stats_rep
         self.standard_tokenizer = GPT2Tokenizer.from_pretrained("gpt2") #moving this definition from TextDataMetafeatures, add to config.py 
         self.standard_tokenizer.pad_token = self.standard_tokenizer.eos_token 
         # Standardize dataset and create new dataloader
