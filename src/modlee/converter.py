@@ -71,11 +71,12 @@ class Converter(object):
         if input_dummy is None:
             if hasattr(torch_model, "input_dummy"):
                 input_dummy = torch_model.input_dummy
-            
+                input_dummy.to(dtype=torch.float32)
             elif input_dummy is None:
                 modality, _ = get_modality_task(torch_model)
                 # self.torch_model.to(device=modlee.DEVICE)
                 input_dummy=INPUT_DUMMY[modality]
+                input_dummy.to(dtype=torch.float32)
     
         torch_model.eval()
         # TODO - refactor the below

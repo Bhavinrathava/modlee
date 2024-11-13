@@ -35,7 +35,9 @@ from torchvision.models import (
 import torch.nn.functional as F
 
 from modlee.utils import closest_power_of_2, _make_serializable, class_from_modality_task
-
+from torch.utils.data import DataLoader, Dataset
+from transformers import GPT2Tokenizer
+import torch
 fixed_resize = 32
 import logging, warnings
 
@@ -768,53 +770,6 @@ class ImageDataMetafeatures(DataMetafeatures):
         )
         return ret
 
-
-class TextDataMetafeatures(DataMetafeatures):
-    def __init__(self, dataloader, nlp_model=None, *args, **kwargs):
-        super().__init__(dataloader, *args, **kwargs)
-        # self.dataloader = dataloader
-        # if not nlp_model:
-        #     # TODO - consider using a larger model embedding e.g. en_code_web_sm -> 300D
-        #     # and truncate
-        #     self.nlp_model = spacy.load("en_core_web_sm")
-        # self.embedding = self.get_embedding()
-        pass
-
-    def get_embedding(self, index=None, max_len=100, *args, **kwargs):
-        """
-        Get embeddings from the dataloader.
-
-        :param index: The index in a batch of the string elements to embed, defaults to 1
-        :return: A dictionary of {embd_i : embd_value}
-        """
-        samples = get_n_samples(self.dataloader)
-        # Find the index of the first batch of strings
-        if not index:
-            index = 0
-            while not isinstance(samples[index][0], str):
-                index += 1
-                if index == len(samples):
-                    raise IndexError(
-                        f"No string elements in {self}, cannot calculate embedding with spaCy"
-                    )
-        embds = list(map(lambda x: self.nlp_model(x).vector, samples[index]))
-        embds = torch.Tensor(embds)
-        embds = embds[:, :max_len]
-        # Return distributions of each embedding axis
-        # TODO - consider how batch elements are sorted, should they be indexed by the index that the
-        # string elements appear? at "embd_{INDEX}..."
-        # ret = {f'embd_{index}_mean_{i}':float(v.numpy()) for i,v in enumerate(embds.mean(axis=0))}
-        # ret.update({f'embd_{index}_std_{i}':float(v.numpy()) for i,v in enumerate(embds.std(axis=0))})
-        # TODO - consider this assumption, not indexing the embeddings at all
-        ret = {
-            f"embd_mean_{i}": float(v.numpy()) for i, v in enumerate(embds.mean(axis=0))
-        }
-        ret.update(
-            {f"embd_std_{i}": float(v.numpy()) for i, v in enumerate(embds.std(axis=0))}
-        )
-        return ret
-        breakpoint()
-
 class TabularDataMetafeatures(DataMetafeatures):
     def __init__(self, dataloader, *args, **kwargs):
         super().__init__(dataloader, *args, **kwargs)
@@ -979,4 +934,60 @@ class TimeseriesDataMetafeatures(DataMetafeatures):
             logging.debug(f"{key:<{max_key_length}} : {value}")
         return None
     
+class ModleeStandardizedTextDataset(Dataset):
+    def __init__(self, initial_dataloader, initial_tokenizer, new_tokenizer):
+        """
+        Args:
+            initial_dataloader: DataLoader with the initial tokenizer.
+            initial_tokenizer: Tokenizer used initially to tokenize the text.
+            new_tokenizer: Standard tokenizer for the final model.
+        """
+        self.initial_dataloader = initial_dataloader
+        self.initial_tokenizer = initial_tokenizer
+        self.new_tokenizer = new_tokenizer
+        
+        if self.new_tokenizer.pad_token is None:
+            self.new_tokenizer.pad_token = initial_tokenizer.eos_token
+
+    def __len__(self):
+        return len(self.initial_dataloader.dataset)
+
+    def __getitem__(self, idx):
+        # Get the original tokenized text and label
+        original_tokenized, attention_mask, label = self.initial_dataloader.dataset[idx]
+
+        # Decode the original text using the initial tokenizer
+        decoded_text = self.initial_tokenizer.decode(
+            original_tokenized.squeeze(), skip_special_tokens=True
+        )
+
+        # Re-tokenize using the new tokenizer (standard tokenizer)
+        re_tokenized = self.new_tokenizer(
+            decoded_text, truncation=True, padding='max_length', max_length=20, return_tensors='pt'
+        )
+
+        # Ensure that inputs are tensors (they should be after using `return_tensors='pt'`)
+        input_ids = re_tokenized['input_ids'].squeeze().to(torch.long)
+        attention_mask = re_tokenized['attention_mask'].squeeze().to(torch.long)
+
+        # Return re-tokenized input_ids and attention_mask along with the label
+        return input_ids, attention_mask, label
+
+
+    
+class TextDataMetafeatures(DataMetafeatures):
+    def __init__(self, dataloader, *args, **kwargs):
+        # Standard tokenizer for standardized text processing
+        self.standard_tokenizer = GPT2Tokenizer.from_pretrained("gpt2") #moving this definition from TextDataMetafeatures, add to config.py 
+        self.standard_tokenizer.pad_token = self.standard_tokenizer.eos_token 
+        # Standardize dataset and create new dataloader
+        standardized_dataset = ModleeStandardizedTextDataset(
+            dataloader, dataloader.initial_tokenizer, self.standard_tokenizer
+        )
+        self.dataloader = DataLoader(standardized_dataset, batch_size=2, shuffle=True)
+        super().__init__(self.dataloader, *args, **kwargs)
+
 from_modality_task = partial(class_from_modality_task, _class="Data_Metafeatures")
+
+
+    

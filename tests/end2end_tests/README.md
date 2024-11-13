@@ -17,6 +17,11 @@ python3 -m pytest tests/end2end_tests/test_timeseries_classification.py -k test
 python3 -m pytest tests/end2end_tests/test_timeseries_regression.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image_real_data_extended.py -k test
+
+python3 -m pytest tests/end2end_tests/test_text_classification.py -k test
+python3 -m pytest tests/end2end_tests/test_text_regression.py -k test
+python3 -m pytest tests/end2end_tests/test_text_to_text.py -k test
+
 ```
 
 ### Real data
@@ -30,5 +35,10 @@ python3 -m pytest tests/end2end_tests/test_timeseries_regression_real_data.py -k
 python3 -m pytest tests/end2end_tests/test_image_regression_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image_real_data_extended.py -k test
+
+python3 -m pytest tests/end2end_tests/test_text_regression_real_data.py -k test
+python3 -m pytest tests/end2end_tests/test_text_classification_real_data.py -k test
+python3 -m pytest tests/end2end_tests/test_text_to_text_real_data.py -k test
+
 
 ```

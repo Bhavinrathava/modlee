@@ -21,6 +21,7 @@ class ModelMetafeatures:
 
         if sample_input is None:
             sample_input = INPUT_DUMMY[self.modality]
+            sample_input.to(dtype=torch.float32)
             print("Using default sample input")
         else:
             # Check the input type
@@ -29,12 +30,14 @@ class ModelMetafeatures:
             # Unpack if it's a list of length 1
             if isinstance(sample_input, list) and len(sample_input) == 1:
                 sample_input = sample_input[0]
+                sample_input.to(dtype=torch.float32)
                 #print(f"Unpacked sample_input: {type(sample_input)}")
 
             # Convert to tensor if it's not already a tensor
             if not torch.is_tensor(sample_input):
                 try:
                     sample_input = torch.tensor(sample_input)
+                    sample_input.to(dtype=torch.float32)
                     
                 except Exception as e:
                     print(f"Error converting sample_input to tensor: {e}")
@@ -210,5 +213,18 @@ class TimeseriesClassificationModelMetafeatures(TimeseriesModelMetafeatures):
     pass
 class TimeseriesRegressionModelMetafeatures(TimeseriesModelMetafeatures):
     pass
+
+class TextModelMetafeatures(ModelMetafeatures):
+    pass
+
+class TextClassificationModelMetafeatures(TextModelMetafeatures):
+    pass
+
+class TextRegressionModelMetafeatures(TextModelMetafeatures):
+    pass
+
+class TextTextToTextModelMetafeatures(TextModelMetafeatures):
+    pass
+
 from_modality_task = partial(class_from_modality_task, _class="Model_Metafeatures")
 
