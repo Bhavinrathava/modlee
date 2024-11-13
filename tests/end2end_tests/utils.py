@@ -4,6 +4,7 @@ import math
 import importlib
 import torch
 
+
 def check_artifacts(artifacts_path):
     """
     Checks for specific files in the artifacts directory, opens them, 
@@ -18,7 +19,7 @@ def check_artifacts(artifacts_path):
 
     print('--- checking experiment artifacts')
 
-    specific_elements = ['model_metafeatures', 'model_size', 'model_summary.txt', 'checkpoints', 'model.py', 'cached_vars', 'stats_rep', 'model', 'model_graph.py', 'model_graph.txt', 'data_metafeatures']
+    specific_elements = ['model_metafeatures', 'model_size', 'model_summary.txt', 'checkpoints', 'model.py', 'cached_vars', 'model', 'model_graph.py', 'model_graph.txt', 'data_metafeatures']
 
     # List the files in the artifacts directory
     artifacts = os.listdir(artifacts_path)

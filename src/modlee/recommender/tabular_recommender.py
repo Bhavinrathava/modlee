@@ -1,6 +1,6 @@
 from modlee.data_metafeatures import DataMetafeatures
-from .recommender import Recommender
-from modlee.model import RecommendedModel
+from modlee.recommender import Recommender
+from modlee.model import RecommendedModelFactory
 import logging
 import torch
 import torch.nn as nn
@@ -9,13 +9,12 @@ import torchvision
 import modlee
 from modlee.converter import Converter
 from modlee.utils import get_model_size, typewriter_print
-
 modlee_converter = Converter()
 
 
 class TabularRecommender(Recommender):
     """
-    Recommender for image models.
+    Recommender for tabular models.
     """
 
     def __init__(self, *args, **kwargs):
@@ -52,8 +51,10 @@ class TabularRecommender(Recommender):
                 except:
                     torch.nn.init.normal_(param)
 
-            self.model = RecommendedModel(model, loss_fn=self.loss_fn, modality=self.modality)
+            model_factory = RecommendedModelFactory(modality = self.modality, task = self.task, model=model, loss_fn=self.loss_fn)
+            self.model = model_factory.get_model()
 
+            self.model.data_mfe = self.metafeatures
             self.code_text = self.get_code_text()
             self.model_code = modlee_converter.onnx_text2code(self.model_text)
 
