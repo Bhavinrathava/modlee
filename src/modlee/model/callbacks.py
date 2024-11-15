@@ -343,14 +343,6 @@ class DataMetafeaturesCallback(ModleeCallback):
 
                 logging.info(f"Logging data metafeatures with {self.DataMetafeatures} from recommender analysis")
                 
-                # Pass the dataloader to the TimeseriesDataMetafeatures
-                # data_mf = self.DataMetafeatures(dataloader=dataloader)  # Ensure dataloader is passed
-                
-                # mlflow.log_dict(data_mf.stats_rep, "stats_rep")
-                # data_mf_dict = {
-                #     **data_mf.properties,
-                #     **data_mf.mfe,
-                # }
                 mlflow.log_dict(_make_serializable(trainer.model.data_mfe), "data_metafeatures")
         else:
             logging.warning("Cannot log data from recommender analysis, running calculations again")
@@ -401,7 +393,7 @@ class DataMetafeaturesCallback(ModleeCallback):
                 # Pass the dataloader to the TimeseriesDataMetafeatures
                 data_mf = self.DataMetafeatures(dataloader=dataloader)  # Ensure dataloader is passed
                 
-                mlflow.log_dict(data_mf.stats_rep, "stats_rep")
+                #mlflow.log_dict(data_mf.stats_rep, "stats_rep")
                 data_mf_dict = {
                     **data_mf.properties,
                     **data_mf.mfe,

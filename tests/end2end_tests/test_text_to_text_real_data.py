@@ -10,10 +10,10 @@ import pytest
 from utils import check_artifacts
 from utils import get_device
 
-torch.set_default_dtype(torch.float32)
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
+#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
+modlee.init(api_key='MsvVailphdUF2pcwbRRqrhx7ibxGC05W', run_path='/home/ubuntu/efs/modlee_pypi_testruns')
 
 def load_real_data():
     dataset = load_dataset("wmt16", "ro-en", split='train[:80%]')
@@ -26,7 +26,7 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
     def __init__(self, tokenizer, model_name="t5-small"):
         super().__init__()
         self.tokenizer = tokenizer
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device).float()
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
     
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None):
         if isinstance(input_ids, list):
@@ -39,7 +39,7 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         
         outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids)
         
-        logits = outputs.logits.to(torch.float32)
+        logits = outputs.logits
         return logits
 
 
@@ -47,8 +47,8 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         input_ids, attention_mask, decoder_input_ids, labels = batch
         logits = self.forward(input_ids, attention_mask, decoder_input_ids)
         
-        logits = logits.to(torch.float32) 
-        labels = labels.to(torch.long) 
+        logits = logits
+        labels = labels 
         
         loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
         return loss
@@ -57,8 +57,11 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         input_ids, attention_mask, decoder_input_ids, labels = batch
         logits = self.forward(input_ids, attention_mask, decoder_input_ids)
         
-        logits = logits.to(torch.float32)
-        labels = labels.to(torch.long)  
+        logits = logits
+        labels = labels
+        
+        #logits = logits.to(torch.float32)
+        #labels = labels.to(torch.long)  
         
         loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
         return loss
@@ -135,7 +138,7 @@ def test_text_to_text(num_samples):
     test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
     modlee_model = ModleeText2TextModel(tokenizer=tokenizer).to(device)
-    modlee_model = modlee_model.float()
+    modlee_model = modlee_model
 
     with modlee.start_run() as run:
         trainer = pl.Trainer(max_epochs=1)
@@ -149,3 +152,6 @@ def test_text_to_text(num_samples):
     artifacts_path = os.path.join(last_run_path, 'artifacts')
     print(last_run_path)
     check_artifacts(artifacts_path)
+
+if __name__ == "__main__":
+    test_text_to_text(100)
