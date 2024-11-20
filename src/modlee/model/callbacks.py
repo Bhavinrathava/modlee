@@ -89,7 +89,7 @@ class ModleeCallback(Callback):
         # except:
         #     pass
         
-        return _input
+        return tuple(_input)
 
 
 class PushServerCallback(Callback):

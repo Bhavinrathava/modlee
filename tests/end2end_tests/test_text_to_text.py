@@ -47,9 +47,10 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         super().__init__()
         
         self.tokenizer = tokenizer
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to('cpu')
     
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None):
+        
         if isinstance(input_ids, list):
             input_ids = torch.cat(input_ids, dim=0)
         
@@ -57,7 +58,15 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
             decoder_input_ids = input_ids 
         
         decoder_input_ids = self.model._shift_right(decoder_input_ids)
-        
+        input_ids = input_ids.to('cpu')
+        type(input_ids)
+        attention_mask = attention_mask.to('cpu')
+
+        type(attention_mask)
+        decoder_input_ids = decoder_input_ids.to('cpu')
+
+        type(decoder_input_ids)
+        self.model = self.model.to('cpu')
         outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids)
         return outputs.logits
 
@@ -77,6 +86,7 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         
         logits = logits.to(torch.float32)
         labels = labels.to(torch.long)  
+        labels = labels.to(logits.device)
         
         loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
         return loss
@@ -144,7 +154,7 @@ def test_text_to_text(num_samples):
     train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
-    modlee_model = ModleeText2TextModel(tokenizer=tokenizer).to(device)
+    modlee_model = ModleeText2TextModel(tokenizer=tokenizer).to('cpu')
 
     with modlee.start_run() as run:
         trainer = pl.Trainer(max_epochs=1)

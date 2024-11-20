@@ -30,8 +30,8 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
     
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None):
         if isinstance(input_ids, list):
-            input_ids = torch.cat(input_ids, dim=0)
-        
+            #input_ids = torch.cat(input_ids, dim=0)
+            input_ids, attention_mask, decoder_input_ids = input_ids
         if decoder_input_ids is None:
             decoder_input_ids = input_ids
         
@@ -39,31 +39,31 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         
         outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids)
         
-        logits = outputs.logits
+        logits = outputs.logits.cpu()
         return logits
 
 
     def training_step(self, batch, batch_idx):
         input_ids, attention_mask, decoder_input_ids, labels = batch
-        logits = self.forward(input_ids, attention_mask, decoder_input_ids)
+        logits = self(input_ids, attention_mask, decoder_input_ids)
         
-        logits = logits
-        labels = labels 
+        # logits = logits
+        # labels = labels 
         
-        loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
+        loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)).cpu(), labels.view(-1).cpu())
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, attention_mask, decoder_input_ids, labels = batch
-        logits = self.forward(input_ids, attention_mask, decoder_input_ids)
+        logits = self(input_ids, attention_mask, decoder_input_ids)
         
-        logits = logits
-        labels = labels
+        #logits = logits
+        #labels = labels
         
         #logits = logits.to(torch.float32)
         #labels = labels.to(torch.long)  
         
-        loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
+        loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)).cpu(), labels.view(-1).cpu())
         return loss
 
     def configure_optimizers(self):
@@ -116,29 +116,21 @@ def test_text_to_text(num_samples):
     target_ids = decoder_input_ids 
     target_ids = torch.tensor(target_ids, dtype=torch.long).to(device)
 
+    input_ids = input_ids.cpu()
+    attention_masks = attention_masks.cpu()
+    decoder_input_ids = decoder_input_ids.cpu()
+
     X_train_ids, X_test_ids, X_train_masks, X_test_masks, y_train, y_test = train_test_split(
         input_ids, attention_masks, target_ids, test_size=0.2, random_state=42
     )
 
-    train_dataset = TensorDataset(
-        torch.tensor(X_train_ids, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_train_masks, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_train_ids, dtype=torch.long).to(device).cpu(),
-        torch.tensor(y_train, dtype=torch.long).to(device).cpu()
-    )
-
-    test_dataset = TensorDataset(
-        torch.tensor(X_test_ids, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_test_masks, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_test_ids, dtype=torch.long).to(device).cpu(),
-        torch.tensor(y_test, dtype=torch.long).to(device).cpu()
-    )
+    train_dataset = TensorDataset(X_train_ids, X_train_masks, X_train_ids, y_train)
+    test_dataset = TensorDataset(X_test_ids, X_test_masks, X_test_ids, y_test)
 
     train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
     modlee_model = ModleeText2TextModel(tokenizer=tokenizer).to(device)
-    modlee_model = modlee_model
 
     with modlee.start_run() as run:
         trainer = pl.Trainer(max_epochs=1)

@@ -108,6 +108,15 @@ class Converter(object):
                         input_dummy[key].requires_grad = False
                         if hasattr(torch_model, 'device'):
                             input_dummy[key] = input_dummy[key].to(device=torch_model.device)
+            elif isinstance(input_dummy, tuple):
+                    if hasattr(torch_model, 'device'):
+                        for x in input_dummy:
+                            x.requires_grad = False
+                            x = x.to(device=torch_model.device)
+                    # (x.requires_grad = False for x in input_dummy)
+                    # if hasattr(torch_model, 'device'):
+                        # (x = x.to(device=torch_model.device) for x in input_dummy)
+
             else:
                 input_dummy.requires_grad = False
                 if hasattr(torch_model, 'device'):

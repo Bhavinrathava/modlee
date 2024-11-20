@@ -32,7 +32,7 @@ class ModelMetafeatures:
                 #print(f"Unpacked sample_input: {type(sample_input)}")
 
             if isinstance(sample_input, list) and len(sample_input) > 1:
-                sample_input = sample_input[0]
+                sample_input = tuple(sample_input)
 
             # Convert to tensor if it's not already a tensor
             if not torch.is_tensor(sample_input):
@@ -209,8 +209,10 @@ class TimeseriesModelMetafeatures(ModelMetafeatures):
     
 class TimeseriesForecastingModelMetafeatures(TimeseriesModelMetafeatures):
     pass
+
 class TimeseriesClassificationModelMetafeatures(TimeseriesModelMetafeatures):
     pass
+
 class TimeseriesRegressionModelMetafeatures(TimeseriesModelMetafeatures):
     pass
 
