@@ -11,6 +11,7 @@ from utils import get_device
 
 device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
+torch.set_default_dtype(torch.float32)
 
 def generate_dummy_text2text_data(num_samples=100):
     example_texts = [
@@ -47,7 +48,7 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         super().__init__()
         
         self.tokenizer = tokenizer
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to('cpu')
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
     
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None):
         
@@ -58,15 +59,15 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
             decoder_input_ids = input_ids 
         
         decoder_input_ids = self.model._shift_right(decoder_input_ids)
-        input_ids = input_ids.to('cpu')
+        #input_ids = input_ids.to('cpu')
         type(input_ids)
-        attention_mask = attention_mask.to('cpu')
+        #attention_mask = attention_mask.to('cpu')
 
         type(attention_mask)
-        decoder_input_ids = decoder_input_ids.to('cpu')
+        #decoder_input_ids = decoder_input_ids.to('cpu')
 
         type(decoder_input_ids)
-        self.model = self.model.to('cpu')
+        #self.model = self.model.to('cpu')
         outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids)
         return outputs.logits
 
@@ -75,7 +76,7 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         logits = self.forward(input_ids, attention_mask, decoder_input_ids)
         
         logits = logits.to(torch.float32)
-        labels = labels.to(torch.long) 
+        labels = labels.to(torch.int32) 
         
         loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
         return loss
@@ -85,8 +86,8 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         logits = self.forward(input_ids, attention_mask, decoder_input_ids)
         
         logits = logits.to(torch.float32)
-        labels = labels.to(torch.long)  
-        labels = labels.to(logits.device)
+        labels = labels.to(torch.int32)  
+        #labels = labels.to(logits.device)
         
         loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
         return loss
@@ -114,9 +115,9 @@ def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
         add_special_tokens=True,
     )
     
-    input_ids = encodings['input_ids'].to(torch.long)
-    attention_mask = encodings['attention_mask'].to(torch.long)
-    decoder_input_ids = target_encodings['input_ids'].to(torch.long)
+    input_ids = encodings['input_ids'].to(torch.int32)
+    attention_mask = encodings['attention_mask'].to(torch.int32)
+    decoder_input_ids = target_encodings['input_ids'].to(torch.int32)
     
     decoder_input_ids = torch.cat([
         decoder_input_ids[:, :1], 
@@ -137,24 +138,24 @@ def test_text_to_text(num_samples):
     )
 
     train_dataset = TensorDataset(
-        torch.tensor(X_train_ids, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_train_masks, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_train_ids, dtype=torch.long).to(device).cpu(), 
-        torch.tensor(y_train, dtype=torch.long).to(device).cpu()  
+        torch.tensor(X_train_ids).to(device),
+        torch.tensor(X_train_masks).to(device),
+        torch.tensor(X_train_ids).to(device), 
+        torch.tensor(y_train).to(device)  
     )
 
     test_dataset = TensorDataset(
-        torch.tensor(X_test_ids, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_test_masks, dtype=torch.long).to(device).cpu(),
-        torch.tensor(X_test_ids, dtype=torch.long).to(device).cpu(),  
-        torch.tensor(y_test, dtype=torch.long).to(device).cpu()  
+        torch.tensor(X_test_ids).to(device),
+        torch.tensor(X_test_masks).to(device),
+        torch.tensor(X_test_ids).to(device),  
+        torch.tensor(y_test).to(device)  
     )
 
 
     train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
-    modlee_model = ModleeText2TextModel(tokenizer=tokenizer).to('cpu')
+    modlee_model = ModleeText2TextModel(tokenizer=tokenizer)
 
     with modlee.start_run() as run:
         trainer = pl.Trainer(max_epochs=1)

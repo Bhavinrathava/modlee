@@ -415,7 +415,10 @@ class DataMetafeaturesCallback(ModleeCallback):
         _input = self.get_input(trainer, pl_module)
         
         try:
-            _output = pl_module.forward(_input)
+            if isinstance(_input, tuple):
+                _output = pl_module.forward(*_input)
+            else:
+                _output = pl_module.forward(_input)
             output_shape = list(_output.shape[1:])
             mlflow.log_param("output_shape", output_shape)
         except:

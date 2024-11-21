@@ -465,7 +465,7 @@ def sample_dataloader(train_dataloader, num_sample):
     try:
         for i in range(num_batch_elements):
             batch_elements.append(
-                torch.cat([b[i].cpu() if b[i].is_cuda else b[i] for b in sampled_batches])
+                torch.cat([b[i].cpu() if b[i].is_cuda or b[i].device.type == 'mps' else b[i] for b in sampled_batches])
             )
     except Exception as e:
         print(f"Error processing batches: {e}")
@@ -498,7 +498,7 @@ def get_n_samples(dataloader, n_samples=100):
     # Ensure the entire batch is on the CPU
     for i, b in enumerate(batch):
         if isinstance(b, torch.Tensor):
-            batch[i] = b.cpu() if b.is_cuda else b
+            batch[i] = b.cpu() if b.is_cuda or b.device.type == 'mps' else b
 
     return batch
 
@@ -537,6 +537,7 @@ class DataMetafeatures(object):
 
         # needs to be defined in child classes based on data type, still ml task independent
         self.batch_features = self.get_raw_batch_elements()
+
 
         # general and independent of any data type or ml task
         start_time = time.time()
@@ -581,7 +582,7 @@ class DataMetafeatures(object):
 
         :return: A list of {'raw': feature}
         """
-        return [{"raw": element} for element in self.batch_elements]
+        return [{"raw": element.to('cpu')} for element in self.batch_elements]
 
     def get_features(self):
         """
