@@ -76,8 +76,9 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         logits = self.forward(input_ids, attention_mask, decoder_input_ids)
         
         logits = logits.to(torch.float32)
-        labels = labels.to(torch.int32) 
-        
+        labels = labels.to(torch.long) 
+        labels = labels.to(logits.device)
+
         loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
         return loss
 
@@ -86,8 +87,8 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         logits = self.forward(input_ids, attention_mask, decoder_input_ids)
         
         logits = logits.to(torch.float32)
-        labels = labels.to(torch.int32)  
-        #labels = labels.to(logits.device)
+        labels = labels.to(torch.long)  
+        labels = labels.to(logits.device)
         
         loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)), labels.view(-1))
         return loss

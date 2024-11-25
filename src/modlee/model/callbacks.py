@@ -88,8 +88,8 @@ class ModleeCallback(Callback):
         #     _input = _input.to(pl_module.device)
         # except:
         #     pass
-        
-        return tuple(_input)
+        return _input
+        #return tuple(_input)
 
 
 class PushServerCallback(Callback):

@@ -32,10 +32,10 @@ def test_text_to_text(model_type, use_modlee_trainer, num_samples):
     if model_type == "transformer":
         model = TransformerSeq2SeqModel(vocab_size=vocab_size).to(device)
     elif model_type == "automodel":
-        model = AutoModelForSeq2SeqLM.from_pretrained("t5-small").to(device)
+        model = AutoModelForSeq2SeqLM.from_pretrained("google/t5-efficient-tiny").to(device)
     else:
         raise ValueError(f"Invalid model type: {model_type}")
-    model = initialize_model(model_type, tokenizer.vocab_size, tokenizer)
+    #model = initialize_model(model_type, tokenizer.vocab_size, tokenizer)
     if use_modlee_trainer:
         trainer = modlee.model.trainer.AutoTrainer(max_epochs=5)
         trainer.fit(

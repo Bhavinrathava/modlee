@@ -17,7 +17,6 @@ class ModelMetafeatures:
     def __init__(self, torch_model: torch.nn.Module, sample_input=None, *args, **kwargs):
         self.torch_model = torch_model
         self.modality, self.task = get_modality_task(torch_model)
-        self.sample_input = sample_input
 
         if sample_input is None:
             sample_input = INPUT_DUMMY[self.modality]
@@ -41,6 +40,7 @@ class ModelMetafeatures:
                     
                 except Exception as e:
                     print(f"Error converting sample_input to tensor: {e}")
+        self.sample_input = sample_input
 
         self.onnx_graph = converter.torch_model2onnx_graph(
             torch_model, 
@@ -88,7 +88,10 @@ class ModelMetafeatures:
 
     @abstractmethod
     def get_output_shape(self):
-        output = self.torch_model(self.sample_input)
+        if isinstance(self.sample_input, tuple):
+            output = self.torch_model(*self.sample_input)
+        elif isinstance(self.sample_input, torch.Tensor):
+         output = self.torch_model(self.sample_input)
         return np.array(output.shape[1:])
 
     @staticmethod
