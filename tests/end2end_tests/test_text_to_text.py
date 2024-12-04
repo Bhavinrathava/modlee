@@ -44,7 +44,7 @@ def generate_dummy_text2text_data(num_samples=100):
 tokenizer = AutoTokenizer.from_pretrained("t5-small")
 
 class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
-    def __init__(self, tokenizer, model_name="t5-small"):
+    def __init__(self, tokenizer, model_name="sshleifer/tiny-mbart"):
         super().__init__()
         
         self.tokenizer = tokenizer
@@ -58,7 +58,7 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         if decoder_input_ids is None:
             decoder_input_ids = input_ids 
         
-        decoder_input_ids = self.model._shift_right(decoder_input_ids)
+        #decoder_input_ids = self.model._shift_right(decoder_input_ids)
         #input_ids = input_ids.to('cpu')
         type(input_ids)
         #attention_mask = attention_mask.to('cpu')

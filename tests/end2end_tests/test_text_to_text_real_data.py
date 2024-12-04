@@ -1,76 +1,50 @@
-import torch
 import os
 import modlee
+import pytest
 import lightning.pytorch as pl
+from utils import check_artifacts, get_device
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-from datasets import load_dataset  
-import pytest
-from utils import check_artifacts
-from utils import get_device
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from datasets import load_dataset
+from utils_text import *
 
-
+# Initialize device and modlee
 device = get_device()
-#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
-modlee.init(api_key='MsvVailphdUF2pcwbRRqrhx7ibxGC05W', run_path='/home/ubuntu/efs/modlee_pypi_testruns')
+modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
 
-def load_real_data():
-    dataset = load_dataset("wmt16", "ro-en", split='train[:80%]')
-    print(f"Dataset structure: {dataset}")
-    return dataset
+# Constants
+BATCH_SIZE = 16
+MAX_LENGTH = 50
 
-tokenizer = AutoTokenizer.from_pretrained("t5-small")
+def load_dataset_and_tokenize(num_samples, dataset_name="wmt16", subset="ro-en", split="train[:80%]", max_length=50):
+    """
+    Loads a dataset and tokenizes it for text-to-text tasks.
 
-class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
-    def __init__(self, tokenizer, model_name="t5-small"):
-        super().__init__()
-        self.tokenizer = tokenizer
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
-    
-    def forward(self, input_ids, attention_mask=None, decoder_input_ids=None):
-        if isinstance(input_ids, list):
-            #input_ids = torch.cat(input_ids, dim=0)
-            input_ids, attention_mask, decoder_input_ids = input_ids
-        if decoder_input_ids is None:
-            decoder_input_ids = input_ids
-        
-        decoder_input_ids = self.model._shift_right(decoder_input_ids)
-        
-        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids)
-        
-        logits = outputs.logits.cpu()
-        return logits
+    Args:
+        num_samples (int): Number of samples to load.
+        dataset_name (str): Name of the dataset to load.
+        subset (str): Subset of the dataset to use.
+        split (str): Data split to use.
+        max_length (int): Maximum token length.
 
+    Returns:
+        tuple: input_ids, decoder_input_ids, tokenizer
+    """
+    # Load the dataset
+    dataset = load_dataset(dataset_name, subset, split=split)
 
-    def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, decoder_input_ids, labels = batch
-        logits = self(input_ids, attention_mask, decoder_input_ids)
-        
-        # logits = logits
-        # labels = labels 
-        
-        loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)).cpu(), labels.view(-1).cpu())
-        return loss
+    # Select a subset of the data
+    subset = dataset.select(range(num_samples))
+    texts = [item['translation']['en'] for item in subset]
+    target_texts = [item['translation']['ro'] for item in subset]
 
-    def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, decoder_input_ids, labels = batch
-        logits = self(input_ids, attention_mask, decoder_input_ids)
-        
-        #logits = logits
-        #labels = labels
-        
-        #logits = logits.to(torch.float32)
-        #labels = labels.to(torch.long)  
-        
-        loss = torch.nn.CrossEntropyLoss()(logits.view(-1, logits.size(-1)).cpu(), labels.view(-1).cpu())
-        return loss
+    # Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("t5-small")
 
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=5e-5)
-
-
-def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
+    # Tokenize texts
     encodings = tokenizer(
         texts,
         truncation=True,
@@ -79,7 +53,6 @@ def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
         return_tensors="pt",
         add_special_tokens=True,
     )
-    
     target_encodings = tokenizer(
         target_texts,
         truncation=True,
@@ -88,62 +61,71 @@ def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
         return_tensors="pt",
         add_special_tokens=True,
     )
-    
+
     input_ids = encodings['input_ids'].to(torch.long)
-    attention_mask = encodings['attention_mask'].to(torch.long)
     decoder_input_ids = target_encodings['input_ids'].to(torch.long)
-    
-    decoder_input_ids = torch.cat([
-        decoder_input_ids[:, :1],
-        decoder_input_ids[:, 1:]
-    ], dim=1)
 
-    return input_ids, attention_mask, decoder_input_ids
+    return input_ids, decoder_input_ids, tokenizer
 
-@pytest.mark.parametrize("num_samples", [100, 200])
-def test_text_to_text(num_samples):
-    dataset = load_real_data()
 
-    subset = dataset.select(range(num_samples))  
-    texts = [item['translation']['en'] for item in subset] 
-    target_texts = [item['translation']['ro'] for item in subset]  
-    input_ids, attention_masks, decoder_input_ids = tokenize_text2text(texts, target_texts, tokenizer)
-    
-    input_ids = torch.tensor(input_ids, dtype=torch.long).to(device)
-    attention_masks = torch.tensor(attention_masks, dtype=torch.long).to(device)
-    decoder_input_ids = torch.tensor(decoder_input_ids, dtype=torch.long).to(device)
+def create_dataloaders(input_ids, decoder_input_ids, test_size=0.2, batch_size=16):
+    """
+    Splits data into training and validation sets and creates dataloaders.
 
-    target_ids = decoder_input_ids 
-    target_ids = torch.tensor(target_ids, dtype=torch.long).to(device)
+    Args:
+        input_ids (Tensor): Input token IDs.
+        decoder_input_ids (Tensor): Decoder token IDs.
+        test_size (float): Proportion of data to use as test set.
+        batch_size (int): Batch size.
 
-    input_ids = input_ids.cpu()
-    attention_masks = attention_masks.cpu()
-    decoder_input_ids = decoder_input_ids.cpu()
-
-    X_train_ids, X_test_ids, X_train_masks, X_test_masks, y_train, y_test = train_test_split(
-        input_ids, attention_masks, target_ids, test_size=0.2, random_state=42
+    Returns:
+        tuple: train_dataloader, val_dataloader
+    """
+    # Split the data
+    X_train, X_val, y_train, y_val = train_test_split(
+        input_ids, decoder_input_ids, test_size=test_size, random_state=42
     )
 
-    train_dataset = TensorDataset(X_train_ids, X_train_masks, X_train_ids, y_train)
-    test_dataset = TensorDataset(X_test_ids, X_test_masks, X_test_ids, y_test)
+    # Create datasets
+    train_dataset = TensorDataset(X_train, X_train, y_train)
+    val_dataset = TensorDataset(X_val, X_val, y_val)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=False)
+    # Create dataloaders
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    modlee_model = ModleeText2TextModel(tokenizer=tokenizer).to(device)
+    return train_dataloader, val_dataloader
 
-    with modlee.start_run() as run:
-        trainer = pl.Trainer(max_epochs=1)
+@pytest.mark.parametrize("model_type", ["transformer", "automodel"])
+@pytest.mark.parametrize("use_modlee_trainer", [True, False])
+@pytest.mark.parametrize("num_samples", [100, 200])
+def test_text_to_text(model_type, use_modlee_trainer, num_samples):
+    input_ids, decoder_input_ids, tokenizer = load_dataset_and_tokenize(num_samples=num_samples)
+    train_dataloader, val_dataloader = create_dataloaders(input_ids, decoder_input_ids)
+
+    model = initialize_model(model_type, tokenizer.vocab_size, tokenizer)
+    if use_modlee_trainer:
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=5)
         trainer.fit(
-            model=modlee_model,
+            model=model,
             train_dataloaders=train_dataloader,
-            val_dataloaders=test_dataloader
+            val_dataloaders=val_dataloader
+        )
+    else:
+        trainer = pl.Trainer(max_epochs=5)
+        trainer.fit(
+            model=model,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader
         )
 
+    #train_model(model, train_dataloader, val_dataloader, use_modlee_trainer)
+
     last_run_path = modlee.last_run_path()
-    artifacts_path = os.path.join(last_run_path, 'artifacts')
     print(last_run_path)
+
+    artifacts_path = os.path.join(last_run_path, 'artifacts')
     check_artifacts(artifacts_path)
 
 if __name__ == "__main__":
-    test_text_to_text(100)
+    test_text_to_text("transformer", True, 100)
