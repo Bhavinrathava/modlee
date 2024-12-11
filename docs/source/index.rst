@@ -84,6 +84,16 @@ modlee
    notebooks/time_series_regression
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Text Examples
+   :hidden:
+   :glob:
+
+   notebooks/text_classification
+   notebooks/text_regression
+   notebooks/text_2_text
+
+.. toctree::
    :maxdepth: 10
    :caption: API Reference
    :hidden:

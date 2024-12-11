@@ -9,6 +9,7 @@ Submodules
 
    modlee.recommender.image_recommender
    modlee.recommender.recommender
+   modlee.recommender.tabular_recommender
 
 Module contents
 ---------------
