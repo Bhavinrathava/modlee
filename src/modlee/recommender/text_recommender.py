@@ -12,27 +12,27 @@ from modlee.utils import get_model_size, typewriter_print
 modlee_converter = Converter()
 
 
-class TabularRecommender(Recommender):
+class TextRecommender(Recommender):
     """
-    Recommender for tabular models.
+    Recommender for Text models.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.modality = "tabular"
-        self.MetafeatureClass = modlee.data_metafeatures.TabularDataMetafeatures
+        self.modality = "text"
+        self.MetafeatureClass = modlee.data_metafeatures.TextDataMetafeatures
 
     def calculate_metafeatures(self, dataloader, *args, **kwargs):
         return super().calculate_metafeatures(
             dataloader,
-            data_metafeature_cls=modlee.data_metafeatures.TabularDataMetafeatures,
+            data_metafeature_cls=modlee.data_metafeatures.TextDataMetafeatures,
         )
 
     def fit(self, dataloader, *args, **kwargs):
         """
-        Fit the recommended to an tabular dataloader.
+        Fit the recommended to an Text dataloader.
 
-        :param dataloader: The dataloader, should contain tabular input as the first batch element.
+        :param dataloader: The dataloader, should contain Text input as the first batch element.
         """
         super().fit(dataloader, *args, **kwargs)
         assert self.metafeatures is not None
@@ -63,14 +63,14 @@ class TabularRecommender(Recommender):
 
         except Exception as e:
             logging.error(
-                f"TabularRecommender.fit failed, could  not return a recommended model, defaulting model to None"
+                f"TextRecommender.fit failed, could  not return a recommended model, defaulting model to None"
             )
             self.model = None
 
 
-class TabularClassificationRecommender(TabularRecommender):
+class TextClassificationRecommender(TextRecommender):
     """
-    Recommender for tabular classification tasks.
+    Recommender for Text classification tasks.
     Uses cross-entropy loss.
     """
 
@@ -80,17 +80,5 @@ class TabularClassificationRecommender(TabularRecommender):
         self.loss_fn = F.cross_entropy
         # Check if num_classes is set, raise ValueError with a professional error message
         if num_classes is None:
-            raise ValueError("recommender.fit: num_classes must be provided when using for modality='tabular', task='classification'.")
+            raise ValueError("recommender.fit: num_classes must be provided when using for modality='text', task='classification'.")
         self.num_classes = num_classes
-
-class TabularRegressionRecommender(TabularRecommender):
-    """
-    Recommender for tabular regression tasks.
-    Uses cross-entropy loss.
-    """
-
-    def __init__(self, num_classes=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.task = "regression"
-        self.loss_fn = F.mse_loss
-        self.num_classes = 1

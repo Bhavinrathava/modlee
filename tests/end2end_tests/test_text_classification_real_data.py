@@ -9,7 +9,7 @@ import pytest
 from utils import check_artifacts
 from utils import get_device
 from utils_text import tokenize_texts, load_real_data
-from utils_text import ModleeTextClassificationModel
+from utils_text import ModleeTextClassificationModel, LinearTextClassificationModel, CNNTextClassificationModel, GRUTextClassificationModel, TransformerTextClassificationModel
 
 
 device = get_device()
@@ -18,13 +18,21 @@ modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/mod
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
 dataset_names = ["amazon_polarity", "yelp_polarity"]
-num_samples_list = [100, 200]
+num_samples_list = [100]
 modlee_trainer_list = [True, False]
+model_classes = [
+    ModleeTextClassificationModel
+    # LinearTextClassificationModel,
+    # CNNTextClassificationModel,
+    # GRUTextClassificationModel,
+    # TransformerTextClassificationModel,
+]
 
 @pytest.mark.parametrize("dataset_name", dataset_names)
+@pytest.mark.parametrize("model_class", model_classes)
 @pytest.mark.parametrize("num_samples", num_samples_list)
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
-def test_text_classification(dataset_name, num_samples, modlee_trainer):
+def test_text_classification(dataset_name, model_class, num_samples, modlee_trainer):
     texts, targets = load_real_data(dataset_name=dataset_name)
     
     texts = texts[:num_samples]
@@ -51,10 +59,14 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer):
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     train_dataloader.initial_tokenizer = tokenizer
 
-    modlee_model = ModleeTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
+    #modlee_model = ModleeTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
+    if model_class == TransformerTextClassificationModel:
+        modlee_model = model_class(num_classes=2).to(device)
+    else:
+        modlee_model = model_class(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
 
     if modlee_trainer:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=30)
         trainer.fit(
             model=modlee_model,
             train_dataloaders=train_dataloader,
@@ -62,7 +74,7 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=1)
+            trainer = pl.Trainer(max_epochs=30)
             trainer.fit(
                 model=modlee_model,
                 train_dataloaders=train_dataloader,

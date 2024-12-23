@@ -45,13 +45,19 @@ def load_real_data(dataset_name="amazon_polarity"):
     if dataset_name == "amazon_polarity":
         dataset = load_dataset("amazon_polarity", split='train[:80%]')
         texts = dataset['content']
-        targets = dataset['label'] 
-        
+        targets = dataset['label']
     elif dataset_name == "yelp_polarity":
         dataset = load_dataset("yelp_polarity", split='train[:80%]')
         texts = dataset['text']
-        targets = dataset['label']  
-    
+        targets = dataset['label']
+    elif dataset_name == "ag_news":
+        dataset = load_dataset("ag_news", split='train[:80%]')
+        texts = dataset['text']
+        targets = dataset['label']
+    elif dataset_name == "dbpedia_14":
+        dataset = load_dataset("dbpedia_14", split='train[:80%]')
+        texts = dataset['content']
+        targets = dataset['label']
     return texts, targets
 
 def generate_dummy_text_regression_data(num_samples=100):
@@ -326,3 +332,128 @@ def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
     ], dim=1)
 
     return input_ids, attention_mask, decoder_input_ids
+
+class LinearTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.model = torch.nn.Sequential(
+            self.embedding,
+            torch.nn.Flatten(),
+            torch.nn.Linear(embed_dim * 20, 128),
+            torch.nn.ReLU(),
+            torch.nn.Linear(128, num_classes)
+        )
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        embedded = self.embedding(input_ids)
+        for layer in list(self.model.children())[1:]:
+            embedded = layer(embedded)
+        return embedded
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+class CNNTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.model = torch.nn.Sequential(
+            self.embedding,
+            torch.nn.Conv1d(embed_dim, 64, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.AdaptiveMaxPool1d(1),
+            torch.nn.Flatten(),
+            torch.nn.Linear(64, num_classes)
+        )
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        embedded = self.embedding(input_ids).permute(0, 2, 1)  # Permute for Conv1d (N, Channels, Sequence)
+        for layer in list(self.model.children())[1:]:
+            embedded = layer(embedded)
+        return embedded
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+class GRUTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, hidden_dim=128, num_classes=2, tokenizer=None):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.gru = torch.nn.GRU(embed_dim, hidden_dim, batch_first=True)
+        self.fc = torch.nn.Linear(hidden_dim, num_classes)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        embedded = self.embedding(input_ids)
+        _, hidden = self.gru(embedded)  # Get the final hidden state
+        return self.fc(hidden.squeeze(0))
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class TransformerTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, num_classes=2):
+        super().__init__()
+        self.model = AutoModel.from_pretrained("bert-base-uncased")
+        self.fc = torch.nn.Linear(self.model.config.hidden_size, num_classes)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
+        return self.fc(outputs.pooler_output)
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-5)  # Smaller learning rate for pre-trained models

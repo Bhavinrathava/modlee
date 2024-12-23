@@ -327,3 +327,204 @@ class TransformerTimeSeriesForecaster(modlee.model.TimeseriesForecastingModleeMo
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
+    
+class SequentialTimeSeriesForecaster(modlee.model.TimeseriesForecastingModleeModel):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=2):
+        super().__init__()
+        self.model = torch.nn.Sequential(
+            torch.nn.Linear(input_dim * 30, hidden_dim),  # Flattened input sequence
+            torch.nn.ReLU(),
+            *[torch.nn.Sequential(torch.nn.Linear(hidden_dim, hidden_dim), torch.nn.ReLU()) for _ in range(num_layers - 1)],
+            torch.nn.Linear(hidden_dim, output_dim)
+        )
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        x = x.view(batch_size, -1)  # Flatten sequence
+        return self.model(x).unsqueeze(1)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+# Model 4: Linear Forecaster
+class LinearTimeSeriesForecaster(modlee.model.TimeseriesForecastingModleeModel):
+    def __init__(self, input_dim, seq_length, output_dim):
+        super().__init__()
+        self.fc = torch.nn.Linear(seq_length * input_dim, output_dim)
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        x = x.view(x.shape[0], -1)
+        x = self.fc(x)
+        return x.unsqueeze(1)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+class MultivariateTimeSeriesForecasterV2(modlee.model.TimeseriesForecastingModleeModel):
+    def __init__(self, input_dim, seq_length, output_dim, hidden_dim=64):
+        super().__init__()
+        self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
+        self.bn1 = torch.nn.BatchNorm1d(hidden_dim)
+        self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.bn2 = torch.nn.BatchNorm1d(hidden_dim)
+        self.fc3 = torch.nn.Linear(hidden_dim, output_dim)
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        batch_size, seq_length, input_dim = x.shape
+        x = x.view(-1, input_dim)  # Flatten time dimension
+        x = torch.relu(self.bn1(self.fc1(x)))
+        x = torch.relu(self.bn2(self.fc2(x)))
+        x = self.fc3(x)
+        x = x.view(batch_size, seq_length, -1)
+        return x
+
+    def training_step(self, batch):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class TransformerTimeSeriesForecasterV2(modlee.model.TimeseriesForecastingModleeModel):
+    def __init__(self, input_dim, seq_length, output_dim, nhead=4, num_layers=4, hidden_dim=128):
+        super().__init__()
+        self.fc_in = torch.nn.Linear(input_dim, hidden_dim)
+        self.transformer = torch.nn.Transformer(
+            d_model=hidden_dim, nhead=nhead, num_encoder_layers=num_layers, dropout=0.2
+        )
+        self.fc_out = torch.nn.Linear(hidden_dim, output_dim)
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        x = self.fc_in(x)  # Project input to hidden_dim
+        x = x.permute(1, 0, 2)  # [seq_len, batch, feature]
+        x = self.transformer(x, x)
+        x = self.fc_out(x.permute(1, 0, 2))  # [batch, seq_len, output_dim]
+        return x
+
+    def training_step(self, batch):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class SequentialTimeSeriesForecasterV2(modlee.model.TimeseriesForecastingModleeModel):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=4, dropout=0.2):
+        super().__init__()
+        layers = [torch.nn.Linear(input_dim * 30, hidden_dim), torch.nn.ReLU()]
+        for _ in range(num_layers - 1):
+            layers.append(torch.nn.Linear(hidden_dim, hidden_dim // 2))
+            layers.append(torch.nn.ReLU())
+            layers.append(torch.nn.Dropout(dropout))
+            hidden_dim = hidden_dim // 2  # Reduce dimensions gradually
+        layers.append(torch.nn.Linear(hidden_dim, output_dim))
+        self.model = torch.nn.Sequential(*layers)
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        x = x.view(batch_size, -1)  # Flatten sequence
+        return self.model(x).unsqueeze(1)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class LinearTimeSeriesForecasterV2(modlee.model.TimeseriesForecastingModleeModel):
+    def __init__(self, input_dim, seq_length, output_dim, hidden_dim=128):
+        super().__init__()
+        self.fc1 = torch.nn.Linear(seq_length * input_dim, hidden_dim)
+        self.dropout = torch.nn.Dropout(0.2)
+        self.fc2 = torch.nn.Linear(hidden_dim, output_dim)
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        x = x.view(x.shape[0], -1)  # Flatten input
+        x = torch.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return x.unsqueeze(1)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+        loss = self.loss_fn(preds, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)

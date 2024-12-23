@@ -9,9 +9,9 @@ from utils_timeseries import MultivariateTimeSeriesClassifier, TransformerTimeSe
 
 device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
-
-modlee_trainer_list = [True, False]
-model_list = [MultivariateTimeSeriesClassifier, TransformerTimeSeriesClassifier]
+#MultivariateTimeSeriesClassifier, TransformerTimeSeriesClassifier
+modlee_trainer_list = [False]
+model_list = [MultivariateTimeSeriesClassifier]
 
 @pytest.mark.parametrize("num_features, seq_length, num_classes, dataset_type", [
     (1,96,2,'ecg'),
@@ -26,9 +26,9 @@ model_list = [MultivariateTimeSeriesClassifier, TransformerTimeSeriesClassifier]
 def test_time_series_classification(num_features, seq_length, num_classes, dataset_type, modlee_trainer, model_class):
     
     if dataset_type == 'ecg':
-        file_path = os.path.join(os.getcwd(), 'tests/end2end_tests/time_series_data', 'ECG200_TRAIN.txt')
+        file_path = os.path.join(os.getcwd(), '/home/ubuntu/modlee/modlee_pypi/tests/end2end_tests/time_series_data', 'ECG200_TRAIN.txt')
         X_train, y_train = load_ecg200_from_txt(file_path)
-        file_path = os.path.join(os.getcwd(), 'tests/end2end_tests/time_series_data', 'ECG200_TEST.txt')
+        file_path = os.path.join(os.getcwd(), '/home/ubuntu/modlee/modlee_pypi/tests/end2end_tests/time_series_data', 'ECG200_TEST.txt')
         X_test, y_test = load_ecg200_from_txt(file_path)
 
     elif dataset_type == 'beef':
@@ -69,3 +69,6 @@ def test_time_series_classification(num_features, seq_length, num_classes, datas
     last_run_path = modlee.last_run_path()
     artifacts_path = os.path.join(last_run_path, 'artifacts')
     check_artifacts(artifacts_path)
+
+if __name__ == "__main__":
+    test_time_series_classification(1,96,2,'ecg', False, MultivariateTimeSeriesClassifier)

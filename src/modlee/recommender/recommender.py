@@ -5,7 +5,7 @@ import json
 import requests
 import logging
 import modlee
-from modlee.utils import get_model_size, typewriter_print
+from modlee.utils import get_model_size, typewriter_print, _make_serializable
 from modlee.converter import Converter
 from modlee import dataframes
 
@@ -112,6 +112,12 @@ class Recommender(object):
         assert (
             self.task is not None
         ), "Recommender task is not set (e.g. classification, segmentation)"
+        
+        # converted_metafeatures = {
+        #     k: (int(v) if isinstance(v, np.integer) else float(v) if isinstance(v, np.floating) else v)
+        #     for k, v in metafeatures.items()
+        # }
+        metafeatures = _make_serializable(metafeatures)
         metafeatures = json.loads(json.dumps(metafeatures))
 
         res = api_config.client.get(

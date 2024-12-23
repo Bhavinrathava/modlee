@@ -32,6 +32,8 @@ python3 tests/end2end_tests/test_image_classification_mnist.py
 python3 -m pytest tests/end2end_tests/test_tabular_regression_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_timeseries_classification_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_timeseries_regression_real_data.py -k test
+python3 -m pytest tests/end2end_tests/test_timeseries_forecasting_real_data.py -k test
+
 python3 -m pytest tests/end2end_tests/test_image_regression_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image_real_data_extended.py -k test

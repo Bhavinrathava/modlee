@@ -94,6 +94,7 @@ class Converter(object):
         #     if not isinstance(input_dummy['x'], dict) and hasattr(torch_model, 'device'):
         #         input_dummy['x'] = input_dummy['x'].to(device=torch_model.device)
         
+        
         if modality=="timeseries":
             # Timeseries
             '''if input_dummy is None:
@@ -112,10 +113,7 @@ class Converter(object):
                     if hasattr(torch_model, 'device'):
                         for x in input_dummy:
                             x.requires_grad = False
-                            x = x.to(device=torch_model.device)
-                    # (x.requires_grad = False for x in input_dummy)
-                    # if hasattr(torch_model, 'device'):
-                        # (x = x.to(device=torch_model.device) for x in input_dummy)
+                            x = x.to(device=torch_model.device)         
 
             else:
                 input_dummy.requires_grad = False
@@ -128,9 +126,28 @@ class Converter(object):
             device = next(torch_model.parameters()).device
             # device = modlee.DEVICE
         # input_dummy.to(device=device)
+
+        class ReshapeWrapper(torch.nn.Module):
+            def __init__(self, original_model):
+                super().__init__()
+                self.model = original_model
+
+            def forward(self, x):
+                # Store original shapes as torch tensors before any operations
+                batch_size = torch.tensor([x.shape[0]], dtype=torch.int64)
+                seq_len = torch.tensor([x.shape[1]], dtype=torch.int64)
+                feat_dim = torch.tensor([x.shape[2]], dtype=torch.int64)
+
+                # Pass these pre-computed tensors to the model
+                return self.model(x)
+
+        wrapped_model = ReshapeWrapper(torch_model)
+
+
         with torch.no_grad():
             for param in torch_model.parameters():
                 param.requires_grad = False
+            #shape_tensor = torch.tensor([100, -1], dtype=torch.int64)
             torch.onnx.export(
                 torch_model,
                 input_dummy,
@@ -140,9 +157,13 @@ class Converter(object):
                 input_names=["input_1"],
                 output_names=["gemm_1"],
                 dynamic_axes={
-                    "input_1": [0],
-                    "gemm_1": [0],
+                    "input_1": {0: "batch_size", 1: "sequence_length", 2: "features"},
+                    "gemm_1": {0: "batch_size"}
                 },
+                # dynamic_axes={
+                #     "input_1": [0],
+                #     "gemm_1": [0],
+                # },
                 **kwargs,
             )
 

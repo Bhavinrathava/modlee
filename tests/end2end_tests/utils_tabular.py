@@ -122,6 +122,102 @@ class TabularRegression(modlee.model.TabularRegressionModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
+class TabularRegressionWithDropout(modlee.model.TabularRegressionModleeModel):
+    def __init__(self, input_dim):
+        super().__init__()
+        self.model = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, 128),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(128, 64),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(64, 1)
+        )
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        return self.model(x)
+
+    def training_step(self, batch):
+        x, y = batch
+        preds = self.forward(x).squeeze() 
+        loss = self.loss_fn(preds, y)
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        preds = self.forward(x).squeeze()
+        loss = self.loss_fn(preds, y)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class TabularRegressionWithLayerNorm(modlee.model.TabularRegressionModleeModel):
+    def __init__(self, input_dim):
+        super().__init__()
+        self.model = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, 128),
+            torch.nn.LayerNorm(128), 
+            torch.nn.ReLU(),
+            torch.nn.Linear(128, 64),
+            torch.nn.LayerNorm(64),   
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, 1)
+        )
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        return self.model(x)
+
+    def training_step(self, batch):
+        x, y = batch
+        preds = self.forward(x).squeeze()
+        loss = self.loss_fn(preds, y)
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        preds = self.forward(x).squeeze()
+        loss = self.loss_fn(preds, y)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+class TabularRegressionWideLeaky(modlee.model.TabularRegressionModleeModel):
+    def __init__(self, input_dim):
+        super().__init__()
+        self.model = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, 256),
+            torch.nn.LeakyReLU(negative_slope=0.01),
+            torch.nn.Linear(256, 128),
+            torch.nn.LeakyReLU(negative_slope=0.01),
+            torch.nn.Linear(128, 1)
+        )
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, x):
+        return self.model(x)
+
+    def training_step(self, batch):
+        x, y = batch
+        preds = self.forward(x).squeeze() 
+        loss = self.loss_fn(preds, y)
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        preds = self.forward(x).squeeze()
+        loss = self.loss_fn(preds, y)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
 class TabularClassifier(modlee.model.TabularClassificationModleeModel):
     def __init__(self, input_dim, num_classes=2):
         super().__init__()

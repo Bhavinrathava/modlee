@@ -12,32 +12,32 @@ from modlee.utils import get_model_size, typewriter_print
 modlee_converter = Converter()
 
 
-class TabularRecommender(Recommender):
+class TimeseriesRecommender(Recommender):
     """
-    Recommender for tabular models.
+    Recommender for Timeseries models.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.modality = "tabular"
-        self.MetafeatureClass = modlee.data_metafeatures.TabularDataMetafeatures
+        self.modality = "timeseries"
+        self.MetafeatureClass = modlee.data_metafeatures.TimeseriesDataMetafeatures
 
     def calculate_metafeatures(self, dataloader, *args, **kwargs):
         return super().calculate_metafeatures(
             dataloader,
-            data_metafeature_cls=modlee.data_metafeatures.TabularDataMetafeatures,
+            data_metafeature_cls=modlee.data_metafeatures.TimeseriesDataMetafeatures,
         )
 
     def fit(self, dataloader, *args, **kwargs):
         """
-        Fit the recommended to an tabular dataloader.
+        Fit the recommended to an Timeseries dataloader.
 
-        :param dataloader: The dataloader, should contain tabular input as the first batch element.
+        :param dataloader: The dataloader, should contain Timeseries input as the first batch element.
         """
         super().fit(dataloader, *args, **kwargs)
         assert self.metafeatures is not None
-        if hasattr(self, 'num_classes'):
-            self.metafeatures.update({"num_classes": self.num_classes})
+        if hasattr(self, 'prediction_length'):
+            self.metafeatures.update({"prediction_length": self.prediction_length})
 
         try:            
             self.model_text = self._get_model_text(self.metafeatures)
@@ -63,34 +63,23 @@ class TabularRecommender(Recommender):
 
         except Exception as e:
             logging.error(
-                f"TabularRecommender.fit failed, could  not return a recommended model, defaulting model to None"
+                f"TimeseriesRecommender.fit failed, could  not return a recommended model, defaulting model to None"
             )
             self.model = None
 
 
-class TabularClassificationRecommender(TabularRecommender):
+class TimeseriesForecastingRecommender(TimeseriesRecommender):
     """
-    Recommender for tabular classification tasks.
+    Recommender for time series forecasting tasks.
     Uses cross-entropy loss.
     """
 
-    def __init__(self, num_classes=None, *args, **kwargs):
+    def __init__(self, prediction_length=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.task = "classification"
+        self.task = "forecasting"
         self.loss_fn = F.cross_entropy
-        # Check if num_classes is set, raise ValueError with a professional error message
-        if num_classes is None:
-            raise ValueError("recommender.fit: num_classes must be provided when using for modality='tabular', task='classification'.")
-        self.num_classes = num_classes
+        # Check if prediction_length is set, raise ValueError with a professional error message
+        if prediction_length is None:
+            raise ValueError("recommender.fit: prediction_length must be provided when using for modality='timeseries', task='forecasting'.")
+        self.prediction_length = prediction_length
 
-class TabularRegressionRecommender(TabularRecommender):
-    """
-    Recommender for tabular regression tasks.
-    Uses cross-entropy loss.
-    """
-
-    def __init__(self, num_classes=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.task = "regression"
-        self.loss_fn = F.mse_loss
-        self.num_classes = 1
