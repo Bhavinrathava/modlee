@@ -76,3 +76,4 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer):
 
 if __name__ == "__main__":
     test_text_classification("amazon_polarity", 100, False)
+    

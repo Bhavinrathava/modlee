@@ -326,3 +326,4 @@ def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
     ], dim=1)
 
     return input_ids, attention_mask, decoder_input_ids
+    
