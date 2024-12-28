@@ -51,6 +51,12 @@ def load_real_data(dataset_name="amazon_polarity"):
         dataset = load_dataset("yelp_polarity", split='train[:80%]')
         texts = dataset['text']
         targets = dataset['label']  
+    elif dataset_name == "ag_news":
+
+        dataset = load_dataset("ag_news", split='train[:80%]')
+        texts = dataset['text']
+        targets = dataset['label']  
+    
     
     return texts, targets
 
@@ -327,3 +333,170 @@ def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
 
     return input_ids, attention_mask, decoder_input_ids
     
+
+class CNNTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.conv1 = torch.nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1)
+        self.conv2 = torch.nn.Conv1d(128, 64, kernel_size=3, padding=1)
+        self.fc = torch.nn.Linear(64 * max_length, num_classes)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Print shape and dtype for debugging
+        print(f"Input shape: {input_ids.shape}, dtype: {input_ids.dtype}")
+        
+        embedded = self.embedding(input_ids)
+        print(f"Embedded shape: {embedded.shape}")
+        
+        # Reshape the embedded input if it's 4D
+        if embedded.dim() == 4:
+            batch_size, seq_len, num_words, embed_dim = embedded.shape
+            embedded = embedded.view(batch_size * seq_len, num_words, embed_dim)
+        
+        # Transpose the embedded input to [batch_size, embed_dim, sequence_length]
+        embedded = embedded.transpose(1, 2)
+        print(f"Transposed embedded shape: {embedded.shape}")
+        
+        x = torch.nn.functional.relu(self.conv1(embedded))
+        x = torch.nn.functional.relu(self.conv2(x))
+        x = x.flatten(start_dim=1)
+        return self.fc(x)
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class MLPTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.fc1 = torch.nn.Linear(embed_dim * max_length, 256)
+        self.fc2 = torch.nn.Linear(256, 64)
+        self.fc3 = torch.nn.Linear(64, num_classes)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.max_length = max_length
+
+    def forward(self, input_ids, attention_mask=None):
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Ensure input_ids has the correct shape
+        if input_ids.dim() == 3:
+            input_ids = input_ids.view(-1, self.max_length)
+        
+        embedded = self.embedding(input_ids)
+        
+        # Ensure embedded has the correct shape
+        if embedded.shape[1] != self.max_length:
+            embedded = embedded[:, :self.max_length, :]
+        
+        embedded = embedded.flatten(start_dim=1)
+        x = torch.nn.functional.relu(self.fc1(embedded))
+        x = torch.nn.functional.relu(self.fc2(x))
+        return self.fc3(x)
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class MultiConvTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        
+        # Multiple convolutional layers with different kernel sizes
+        self.conv1 = torch.nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1)
+        self.conv2 = torch.nn.Conv1d(embed_dim, 128, kernel_size=4, padding=1)
+        self.conv3 = torch.nn.Conv1d(embed_dim, 128, kernel_size=5, padding=2)
+        
+        # Global max pooling
+        self.global_max_pool = torch.nn.AdaptiveMaxPool1d(1)
+        
+        # Fully connected layers
+        self.fc1 = torch.nn.Linear(384, 256)  # 384 = 128 * 3 (output from 3 conv layers)
+        self.fc2 = torch.nn.Linear(256, num_classes)
+        
+        self.dropout = torch.nn.Dropout(0.5)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Embedding layer
+        embedded = self.embedding(input_ids)  # [batch_size, seq_len, embed_dim]
+        
+        # Reshape if input is 4D
+        if embedded.dim() == 4:
+            batch_size, seq_len, num_words, embed_dim = embedded.shape
+            embedded = embedded.view(batch_size * seq_len, num_words, embed_dim)
+        
+        embedded = embedded.transpose(1, 2)  # [batch_size, embed_dim, seq_len]
+        
+        # Apply convolutions
+        conv1_out = torch.nn.functional.relu(self.conv1(embedded))
+        conv2_out = torch.nn.functional.relu(self.conv2(embedded))
+        conv3_out = torch.nn.functional.relu(self.conv3(embedded))
+        
+        # Global max pooling
+        pooled1 = self.global_max_pool(conv1_out).squeeze(-1)
+        pooled2 = self.global_max_pool(conv2_out).squeeze(-1)
+        pooled3 = self.global_max_pool(conv3_out).squeeze(-1)
+        
+        # Concatenate pooled features
+        cat = torch.cat((pooled1, pooled2, pooled3), dim=1)
+        
+        # Fully connected layers with dropout
+        x = self.dropout(torch.nn.functional.relu(self.fc1(cat)))
+        x = self.fc2(x)
+        
+        return x
+
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, labels = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
