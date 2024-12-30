@@ -82,3 +82,15 @@ class TextClassificationRecommender(TextRecommender):
         if num_classes is None:
             raise ValueError("recommender.fit: num_classes must be provided when using for modality='text', task='classification'.")
         self.num_classes = num_classes
+
+class TextRegressionRecommender(TextRecommender):
+    """
+    Recommender for Text regression tasks.
+    Uses cross-entropy loss.
+    """
+
+    def __init__(self, num_classes=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.task = "regression"
+        self.loss_fn = F.cross_entropy
+        self.num_classes = 1
