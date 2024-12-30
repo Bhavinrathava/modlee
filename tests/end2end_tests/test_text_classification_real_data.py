@@ -70,7 +70,7 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
             modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
 
     if modlee_trainer:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=30)
         trainer.fit(
             model=modlee_model,
             train_dataloaders=train_dataloader,
@@ -78,7 +78,7 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=1)
+            trainer = pl.Trainer(max_epochs=30)
             trainer.fit(
                 model=modlee_model,
                 train_dataloaders=train_dataloader,
