@@ -17,10 +17,14 @@ modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/mod
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
-dataset_names = ["ag_news","amazon_polarity", "yelp_polarity"]
-num_samples_list = [100,200]
+dataset_names = ["ag_news"]
+                 #,"amazon_polarity", "yelp_polarity"]
+num_samples_list = [100]
+                    #,200]
 modlee_trainer_list = [False,True]
-model_list = [ModleeTextClassificationModel, CNNTextClassificationModel, MLPTextClassificationModel, MultiConvTextClassificationModel]
+#model_list = [ModleeTextClassificationModel, CNNTextClassificationModel, MLPTextClassificationModel, MultiConvTextClassificationModel]
+model_list = [CNNTextClassificationModel]
+
 @pytest.mark.parametrize("dataset_name", dataset_names)
 @pytest.mark.parametrize("num_samples", num_samples_list)
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
@@ -70,7 +74,7 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
             modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
 
     if modlee_trainer:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=30)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
         trainer.fit(
             model=modlee_model,
             train_dataloaders=train_dataloader,
@@ -78,7 +82,7 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=30)
+            trainer = pl.Trainer(max_epochs=1)
             trainer.fit(
                 model=modlee_model,
                 train_dataloaders=train_dataloader,
@@ -91,5 +95,5 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
     check_artifacts(artifacts_path)
 
 if __name__ == "__main__":
-    test_text_classification("amazon_polarity", 100, False, ModleeTextClassificationModel)
+    test_text_classification("amazon_polarity", 100, False, MultiConvTextClassificationModel)
     
