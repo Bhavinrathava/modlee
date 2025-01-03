@@ -17,13 +17,10 @@ modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/mod
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
-dataset_names = ["ag_news"]
-                 #,"amazon_polarity", "yelp_polarity"]
-num_samples_list = [100]
-                    #,200]
+dataset_names = ["ag_news","amazon_polarity", "yelp_polarity"]
+num_samples_list = [100,200]
 modlee_trainer_list = [False,True]
-#model_list = [ModleeTextClassificationModel, CNNTextClassificationModel, MLPTextClassificationModel, MultiConvTextClassificationModel]
-model_list = [CNNTextClassificationModel]
+model_list = [ModleeTextClassificationModel, CNNTextClassificationModel, MLPTextClassificationModel, MultiConvTextClassificationModel]
 
 @pytest.mark.parametrize("dataset_name", dataset_names)
 @pytest.mark.parametrize("num_samples", num_samples_list)
@@ -60,21 +57,15 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
         if model == CNNTextClassificationModel or model == MultiConvTextClassificationModel:
             modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer, max_length=20).to(device)
         else:
-       # modlee_model = ModleeTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer).to(device)
-       #modlee_model = CNNTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer, max_length=20).to(device)
-        #modlee_model = MLPTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer).to(device)
             modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer).to(device)
     else:
         if model == CNNTextClassificationModel or model == MultiConvTextClassificationModel:
             modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer, max_length=20).to(device)
         else:
-       # modlee_model = ModleeTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
-       #modlee_model = CNNTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer, max_length=20).to(device)
-        #modlee_model = MLPTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
             modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
 
     if modlee_trainer:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=30)
         trainer.fit(
             model=modlee_model,
             train_dataloaders=train_dataloader,
@@ -82,7 +73,7 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=1)
+            trainer = pl.Trainer(max_epochs=30)
             trainer.fit(
                 model=modlee_model,
                 train_dataloaders=train_dataloader,

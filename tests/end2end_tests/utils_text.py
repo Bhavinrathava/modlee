@@ -98,7 +98,7 @@ class ModleeTextClassificationModel(modlee.model.TextClassificationModleeModel):
         )
         self.loss_fn = torch.nn.CrossEntropyLoss()
     
-    def forward(self, input_ids, attention_mask=None):
+    def forward(self, input_ids):
         if isinstance(input_ids, list):
             input_ids = torch.cat(input_ids, dim=0)
         embedded = self.embedding(input_ids)
@@ -108,14 +108,14 @@ class ModleeTextClassificationModel(modlee.model.TextClassificationModleeModel):
         return embedded
 
     def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch
-        preds = self.forward(input_ids, attention_mask)
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch
-        preds = self.forward(input_ids, attention_mask)
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
@@ -395,7 +395,7 @@ class MLPTextClassificationModel(modlee.model.TextClassificationModleeModel):
         self.loss_fn = torch.nn.CrossEntropyLoss()
         self.max_length = max_length
 
-    def forward(self, input_ids, attention_mask=None):
+    def forward(self, input_ids):
         if isinstance(input_ids, list):
             input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
         elif not isinstance(input_ids, torch.Tensor):
@@ -417,14 +417,14 @@ class MLPTextClassificationModel(modlee.model.TextClassificationModleeModel):
         return self.fc3(x)
 
     def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch
-        preds = self.forward(input_ids, attention_mask)
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch
-        preds = self.forward(input_ids, attention_mask)
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
