@@ -349,12 +349,9 @@ class CNNTextClassificationModel(modlee.model.TextClassificationModleeModel):
             input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
         elif not isinstance(input_ids, torch.Tensor):
             input_ids = torch.tensor(input_ids, dtype=torch.long)
-        
-        # Print shape and dtype for debugging
-        print(f"Input shape: {input_ids.shape}, dtype: {input_ids.dtype}")
+    
         
         embedded = self.embedding(input_ids)
-        print(f"Embedded shape: {embedded.shape}")
         
         # Reshape the embedded input if it's 4D
         if embedded.dim() == 4:
@@ -363,7 +360,6 @@ class CNNTextClassificationModel(modlee.model.TextClassificationModleeModel):
         
         # Transpose the embedded input to [batch_size, embed_dim, sequence_length]
         embedded = embedded.transpose(1, 2)
-        print(f"Transposed embedded shape: {embedded.shape}")
         
         x = torch.nn.functional.relu(self.conv1(embedded))
         x = torch.nn.functional.relu(self.conv2(x))
@@ -452,39 +448,68 @@ class MultiConvTextClassificationModel(modlee.model.TextClassificationModleeMode
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
     def forward(self, input_ids):
-        if isinstance(input_ids, list):
-            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
-        elif not isinstance(input_ids, torch.Tensor):
+        # Ensure input_ids is a tensor
+        if not isinstance(input_ids, torch.Tensor):
             input_ids = torch.tensor(input_ids, dtype=torch.long)
         
         # Embedding layer
-        embedded = self.embedding(input_ids)  # [batch_size, seq_len, embed_dim]
+        embedded = self.embedding(input_ids)
         
-        # Reshape if input is 4D
+        # Reshape if necessary
         if embedded.dim() == 4:
-            batch_size, seq_len, num_words, embed_dim = embedded.shape
-            embedded = embedded.view(batch_size * seq_len, num_words, embed_dim)
+            embedded = embedded.view(-1, embedded.size(-2), embedded.size(-1))
         
         embedded = embedded.transpose(1, 2)  # [batch_size, embed_dim, seq_len]
         
-        # Apply convolutions
-        conv1_out = torch.nn.functional.relu(self.conv1(embedded))
-        conv2_out = torch.nn.functional.relu(self.conv2(embedded))
-        conv3_out = torch.nn.functional.relu(self.conv3(embedded))
+        # Apply convolutions and pooling
+        conv1 = self.global_max_pool(torch.nn.functional.relu(self.conv1(embedded)))
+        conv2 = self.global_max_pool(torch.nn.functional.relu(self.conv2(embedded)))
+        conv3 = self.global_max_pool(torch.nn.functional.relu(self.conv3(embedded)))
         
-        # Global max pooling
-        pooled1 = self.global_max_pool(conv1_out).squeeze(-1)
-        pooled2 = self.global_max_pool(conv2_out).squeeze(-1)
-        pooled3 = self.global_max_pool(conv3_out).squeeze(-1)
+        # Concatenate pooled features and flatten
+        pooled = torch.cat((conv1, conv2, conv3), dim=1).flatten(1)
         
-        # Concatenate pooled features
-        cat = torch.cat((pooled1, pooled2, pooled3), dim=1)
-        
-        # Fully connected layers with dropout
-        x = self.dropout(torch.nn.functional.relu(self.fc1(cat)))
+        # Fully connected layers
+        x = self.dropout(torch.nn.functional.relu(self.fc1(pooled)))
         x = self.fc2(x)
         
         return x
+
+
+    # def forward(self, input_ids):
+    #     if isinstance(input_ids, list):
+    #         input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+    #     elif not isinstance(input_ids, torch.Tensor):
+    #         input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+    #     # Embedding layer
+    #     embedded = self.embedding(input_ids)  # [batch_size, seq_len, embed_dim]
+        
+    #     # Reshape if input is 4D
+    #     if embedded.dim() == 4:
+    #         batch_size, seq_len, num_words, embed_dim = embedded.shape
+    #         embedded = embedded.view(batch_size * seq_len, num_words, embed_dim)
+        
+    #     embedded = embedded.transpose(1, 2)  # [batch_size, embed_dim, seq_len]
+        
+    #     # Apply convolutions
+    #     conv1_out = torch.nn.functional.relu(self.conv1(embedded))
+    #     conv2_out = torch.nn.functional.relu(self.conv2(embedded))
+    #     conv3_out = torch.nn.functional.relu(self.conv3(embedded))
+        
+    #     # Global max pooling
+    #     pooled1 = self.global_max_pool(conv1_out).squeeze(-1)
+    #     pooled2 = self.global_max_pool(conv2_out).squeeze(-1)
+    #     pooled3 = self.global_max_pool(conv3_out).squeeze(-1)
+        
+    #     # Concatenate pooled features
+    #     cat = torch.cat((pooled1, pooled2, pooled3), dim=1)
+        
+    #     # Fully connected layers with dropout
+    #     x = self.dropout(torch.nn.functional.relu(self.fc1(cat)))
+    #     x = self.fc2(x)
+        
+    #     return x
 
 
     def training_step(self, batch, batch_idx):

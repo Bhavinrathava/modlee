@@ -20,6 +20,8 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 dataset_names = ["ag_news","amazon_polarity", "yelp_polarity"]
 num_samples_list = [100,200]
 modlee_trainer_list = [False,True]
+#model_list = [MultiConvTextClassificationModel]
+
 model_list = [ModleeTextClassificationModel, CNNTextClassificationModel, MLPTextClassificationModel, MultiConvTextClassificationModel]
 
 @pytest.mark.parametrize("dataset_name", dataset_names)
