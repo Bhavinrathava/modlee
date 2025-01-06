@@ -9,7 +9,7 @@ import pytest
 from utils import check_artifacts
 from utils import get_device
 from utils_text import tokenize_texts, load_real_data
-from utils_text import ModleeTextRegressionModel, CNNTextRegressionModel, FFNNTextRegressionModel, BOWMLPTextRegressionModel
+from utils_text import MLPTextRegressionModel, MultiConvTextRegressionModel, CNNTextRegressionModel, ModleeTextRegressionModel
 
 device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
@@ -19,7 +19,7 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 dataset_names = ["ag_news", "amazon_polarity", "yelp_polarity"]
 num_samples_list = [100, 200]
 modlee_trainer_list = [False, True]
-model_list = [ModleeTextRegressionModel, CNNTextRegressionModel, FFNNTextRegressionModel, BOWMLPTextRegressionModel]
+model_list = [MLPTextRegressionModel, MultiConvTextRegressionModel, CNNTextRegressionModel, ModleeTextRegressionModel]
 
 @pytest.mark.parametrize("dataset_name", dataset_names)
 @pytest.mark.parametrize("num_samples", num_samples_list)
