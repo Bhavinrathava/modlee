@@ -955,8 +955,9 @@ class ModleeStandardizedTextDataset(Dataset):
 
     def __getitem__(self, idx):
         # Get the original tokenized text and label
-        original_tokenized, attention_mask, label = self.initial_dataloader.dataset[idx]
-
+        #original_tokenized, attention_mask, label = self.initial_dataloader.dataset[idx]
+        original_tokenized, label = self.initial_dataloader.dataset[idx]
+        original_tokenized = original_tokenized.to(torch.long)
         # Decode the original text using the initial tokenizer
         decoded_text = self.initial_tokenizer.decode(
             original_tokenized.squeeze(), skip_special_tokens=True
@@ -969,10 +970,11 @@ class ModleeStandardizedTextDataset(Dataset):
 
         # Ensure that inputs are tensors (they should be after using `return_tensors='pt'`)
         input_ids = re_tokenized['input_ids'].squeeze().to(torch.long)
-        attention_mask = re_tokenized['attention_mask'].squeeze().to(torch.long)
+        #attention_mask = re_tokenized['attention_mask'].squeeze().to(torch.long)
 
         # Return re-tokenized input_ids and attention_mask along with the label
-        return input_ids, attention_mask, label
+        return input_ids, label
+        #return input_ids, attention_mask, label
 
 
     

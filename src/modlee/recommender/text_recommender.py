@@ -92,5 +92,5 @@ class TextRegressionRecommender(TextRecommender):
     def __init__(self, num_classes=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.task = "regression"
-        self.loss_fn = F.cross_entropy
+        self.loss_fn = F.mse_loss
         self.num_classes = 1

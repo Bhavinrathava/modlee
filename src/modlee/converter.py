@@ -157,13 +157,9 @@ class Converter(object):
                 input_names=["input_1"],
                 output_names=["gemm_1"],
                 dynamic_axes={
-                    "input_1": {0: "batch_size", 1: "sequence_length", 2: "features"},
-                    "gemm_1": {0: "batch_size"}
+                    "input_1": [0],
+                    "gemm_1": [0],
                 },
-                # dynamic_axes={
-                #     "input_1": [0],
-                #     "gemm_1": [0],
-                # },
                 **kwargs,
             )
 
