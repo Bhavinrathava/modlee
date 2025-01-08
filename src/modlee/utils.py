@@ -796,7 +796,8 @@ def get_modality_task(obj):
             
             obj_name = _obj.__name__.replace("Recommender","").replace("ModleeModel","")
 
-            ret = re.match(r"([A-Z]\w+)([A-Z]\w*)", obj_name)
+            #####ret = re.match(r"([A-Z]\w+)([A-Z]\w*)", obj_name)
+            ret = re.match(r"([A-Z][a-z]+)([A-Z].*)", obj_name)
             if ret is not None:
                 ret = [r.lower() for r in ret.groups()]
                 if ret[0] in MODALITIES and ret[1] in TASKS:

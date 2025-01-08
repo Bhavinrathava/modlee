@@ -101,7 +101,7 @@ class TextTextToTextRecommender(TextRecommender):
     Uses cross-entropy loss.
     """
 
-    def __init__(self, num_classes=None, *args, **kwargs):
+    def __init__(self, vocab_size=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.task = "texttotext"
         self.loss_fn = F.cross_entropy
