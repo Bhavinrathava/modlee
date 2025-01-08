@@ -94,3 +94,18 @@ class TextRegressionRecommender(TextRecommender):
         self.task = "regression"
         self.loss_fn = F.mse_loss
         self.num_classes = 1
+
+class TextTextToTextRecommender(TextRecommender):
+    """
+    Recommender for Text TextToText tasks.
+    Uses cross-entropy loss.
+    """
+
+    def __init__(self, num_classes=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.task = "text_to_text"
+        self.loss_fn = F.cross_entropy
+        if vocab_size is None:
+            raise ValueError("recommender.fit: vocab_size must be provided for modality='text', task='text_to_text'.")
+        
+        self.vocab_size = vocab_size

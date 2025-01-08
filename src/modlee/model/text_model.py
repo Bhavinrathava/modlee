@@ -51,7 +51,7 @@ class TextTextToTextModleeModel(ModleeModel):
 
         """
         modality = 'text'
-        task = "text-to-text"
+        task = "text_to_text"
         vars_cache = {"modality":modality,"task": task}
         ModleeModel.__init__(
             self,
