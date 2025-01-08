@@ -22,6 +22,9 @@ python3 -m pytest tests/end2end_tests/test_text_classification.py -k test
 python3 -m pytest tests/end2end_tests/test_text_regression.py -k test
 python3 -m pytest tests/end2end_tests/test_text_to_text.py -k test
 
+python3 -m pytest tests/end2end_tests/test_text_to_text_single_input.py -k test
+
+
 ```
 
 ### Real data
