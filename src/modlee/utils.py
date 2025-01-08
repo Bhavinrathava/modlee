@@ -812,7 +812,8 @@ def get_modality_task(obj):
     # obj_name = type(_obj).__name__.replace("Recommender","").replace("ModleeModel","")
     obj_name = _obj.__name__.replace("Recommender","").replace("ModleeModel","")
     # breakpoint()
-    ret = re.match(r"([A-Z]\w+)([A-Z]\w*)", obj_name)
+    ####ret = re.match(r"([A-Z]\w+)([A-Z]\w*)", obj_name)
+    ret = re.match(r"([A-Z][a-z]+)([A-Z].*)", obj_name)
     if ret:
         return (r.lower() for r in ret.groups())
     else:

@@ -154,15 +154,16 @@ class ResidualTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-@pytest.mark.parametrize("modlee_trainer", [False])
+@pytest.mark.parametrize("modlee_trainer", [False,True])
+@pytest.mark.parametrize("num_samples", [100,200])
 @pytest.mark.parametrize("model_class", [
-    SimpleTextToTextModel
-    # ExtendedTextToTextModel,
-    # SimplifiedTextToTextModel,
-    # ResidualTextToTextModel
+    SimpleTextToTextModel,
+    ExtendedTextToTextModel,
+    SimplifiedTextToTextModel,
+    ResidualTextToTextModel
 ])
-def test_text_to_text(modlee_trainer, model_class):
-    inputs, outputs = generate_synthetic_data(num_samples=100)
+def test_text_to_text(modlee_trainer, num_samples, model_class):
+    inputs, outputs = generate_synthetic_data(num_samples=num_samples)
 
     vocab = {word: idx for idx, word in enumerate(set(" ".join(inputs + outputs).split()))}
     input_ids = [torch.tensor([vocab[word] for word in text.split()]) for text in inputs]
@@ -191,7 +192,7 @@ def test_text_to_text(modlee_trainer, model_class):
     model = model_class(vocab_size=len(vocab), max_length=max(len(seq) for seq in input_ids)).to(device)
 
     if modlee_trainer:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=50)
         trainer.fit(
             model=model,
             train_dataloaders=train_dataloader,
@@ -199,7 +200,7 @@ def test_text_to_text(modlee_trainer, model_class):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=1)
+            trainer = pl.Trainer(max_epochs=50)
             trainer.fit(
                 model=model,
                 train_dataloaders=train_dataloader,
@@ -212,4 +213,4 @@ def test_text_to_text(modlee_trainer, model_class):
     check_artifacts(artifacts_path)
 
 if __name__ == "__main__":
-    test_text_to_text(False, SimpleTextToTextModel)
+    test_text_to_text(False, 100, SimpleTextToTextModel)
