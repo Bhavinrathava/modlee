@@ -228,7 +228,7 @@ class TextClassificationModelMetafeatures(TextModelMetafeatures):
 class TextRegressionModelMetafeatures(TextModelMetafeatures):
     pass
 
-class TextTextToTextModelMetafeatures(TextModelMetafeatures):
+class TextTexttotextModelMetafeatures(TextModelMetafeatures):
     pass
 
 from_modality_task = partial(class_from_modality_task, _class="Model_Metafeatures")

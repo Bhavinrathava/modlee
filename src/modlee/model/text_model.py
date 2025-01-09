@@ -39,7 +39,7 @@ class TextRegressionModleeModel(ModleeModel):
             kwargs_cache=vars_cache, *args, **kwargs
         )
 
-class TextTextToTextModleeModel(ModleeModel):
+class TextTexttotextModleeModel(ModleeModel):
     """
     Subclass of ModleeModel with text-classification-specific convenience wrappers
     - Calculates data-specific data statistics

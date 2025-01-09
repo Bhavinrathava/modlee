@@ -38,6 +38,8 @@ class TextRecommender(Recommender):
         assert self.metafeatures is not None
         if hasattr(self, 'num_classes'):
             self.metafeatures.update({"num_classes": self.num_classes})
+        elif hasattr(self, 'vocab_size'):
+            self.metafeatures.update({"vocab_size": self.vocab_size})
 
         try:            
             self.model_text = self._get_model_text(self.metafeatures)
@@ -95,7 +97,7 @@ class TextRegressionRecommender(TextRecommender):
         self.loss_fn = F.mse_loss
         self.num_classes = 1
 
-class TextTextToTextRecommender(TextRecommender):
+class TextTexttotextRecommender(TextRecommender):
     """
     Recommender for Text TextToText tasks.
     Uses cross-entropy loss.
