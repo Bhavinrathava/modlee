@@ -1,5 +1,3 @@
-
-
 import os
 import torch
 import modlee
@@ -27,29 +25,32 @@ class SimpleTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def __init__(self, vocab_size, embed_dim=50, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
-        self.fc1 = torch.nn.Linear(embed_dim * max_length, 128)
+        self.fc1 = torch.nn.Linear(embed_dim, 128)  # Modified to process per timestep
         self.fc2 = torch.nn.Linear(128, 128)
-        self.fc3 = torch.nn.Linear(128, vocab_size * max_length)
+        self.fc3 = torch.nn.Linear(128, vocab_size)  # Predict per token
         self.max_length = max_length
         self.vocab_size = vocab_size
 
     def forward(self, input_ids):
-        embedded = self.embedding(input_ids)
-        embedded = embedded.flatten(start_dim=1)
-        x = torch.nn.functional.relu(self.fc1(embedded))
-        x = torch.nn.functional.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x.view(-1, self.max_length, self.vocab_size)
+        # Embed input tokens
+        embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
+
+        # Process each token independently
+        x = torch.nn.functional.relu(self.fc1(embedded))  # Shape: (batch_size, max_length, 128)
+        x = torch.nn.functional.relu(self.fc2(x))         # Shape: (batch_size, max_length, 128)
+        x = self.fc3(x)                                   # Shape: (batch_size, max_length, vocab_size)
+
+        return x  # Shape: (batch_size, max_length, vocab_size)
 
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
@@ -60,29 +61,32 @@ class ExtendedTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def __init__(self, vocab_size, embed_dim=50, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
-        self.fc1 = torch.nn.Linear(embed_dim * max_length, 256)
+        self.fc1 = torch.nn.Linear(embed_dim, 256)  # Modified to process per timestep
         self.fc2 = torch.nn.Linear(256, 128)
-        self.fc3 = torch.nn.Linear(128, vocab_size * max_length)
+        self.fc3 = torch.nn.Linear(128, vocab_size)  # Predict per token
         self.max_length = max_length
         self.vocab_size = vocab_size
 
     def forward(self, input_ids):
-        embedded = self.embedding(input_ids)
-        embedded = embedded.flatten(start_dim=1)
-        x = torch.nn.functional.relu(self.fc1(embedded))
-        x = torch.nn.functional.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x.view(-1, self.max_length, self.vocab_size)
+        # Embed input tokens
+        embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
+
+        # Process each token independently
+        x = torch.nn.functional.relu(self.fc1(embedded))  # Shape: (batch_size, max_length, 256)
+        x = torch.nn.functional.relu(self.fc2(x))         # Shape: (batch_size, max_length, 128)
+        x = self.fc3(x)                                   # Shape: (batch_size, max_length, vocab_size)
+
+        return x  # Shape: (batch_size, max_length, vocab_size)
 
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
@@ -93,27 +97,30 @@ class SimplifiedTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def __init__(self, vocab_size, embed_dim=30, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
-        self.fc1 = torch.nn.Linear(embed_dim * max_length, 64)
-        self.fc2 = torch.nn.Linear(64, vocab_size * max_length)
+        self.fc1 = torch.nn.Linear(embed_dim, 64)  # Modified to process per timestep
+        self.fc2 = torch.nn.Linear(64, vocab_size)  # Predict per token
         self.max_length = max_length
         self.vocab_size = vocab_size
 
     def forward(self, input_ids):
-        embedded = self.embedding(input_ids)
-        embedded = embedded.flatten(start_dim=1)
-        x = torch.nn.functional.relu(self.fc1(embedded))
-        x = self.fc2(x)
-        return x.view(-1, self.max_length, self.vocab_size)
+        # Embed input tokens
+        embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
+
+        # Process each token independently
+        x = torch.nn.functional.relu(self.fc1(embedded))  # Shape: (batch_size, max_length, 64)
+        x = self.fc2(x)                                   # Shape: (batch_size, max_length, vocab_size)
+
+        return x  # Shape: (batch_size, max_length, vocab_size)
 
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
@@ -124,37 +131,41 @@ class ResidualTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def __init__(self, vocab_size, embed_dim=50, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
-        self.fc1 = torch.nn.Linear(embed_dim * max_length, 128)
+        self.fc1 = torch.nn.Linear(embed_dim, 128)  # Modified to process per timestep
         self.fc2 = torch.nn.Linear(128, 128)
-        self.fc3 = torch.nn.Linear(128, vocab_size * max_length)
+        self.fc3 = torch.nn.Linear(128, vocab_size)  # Predict per token
         self.max_length = max_length
         self.vocab_size = vocab_size
 
     def forward(self, input_ids):
-        embedded = self.embedding(input_ids)
-        embedded = embedded.flatten(start_dim=1)
-        x = torch.nn.functional.relu(self.fc1(embedded))
-        residual = x
-        x = torch.nn.functional.relu(self.fc2(x)) + residual
-        x = self.fc3(x)
-        return x.view(-1, self.max_length, self.vocab_size)
+        # Embed input tokens
+        embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
+
+        # Process each token independently
+        x = torch.nn.functional.relu(self.fc1(embedded))  # Shape: (batch_size, max_length, 128)
+        residual = x  # Residual connection
+        x = torch.nn.functional.relu(self.fc2(x)) + residual  # Shape: (batch_size, max_length, 128)
+        x = self.fc3(x)  # Shape: (batch_size, max_length, vocab_size)
+
+        return x  # Shape: (batch_size, max_length, vocab_size)
 
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
-        preds = self.forward(input_ids)
+        preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
         loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
         return loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-@pytest.mark.parametrize("modlee_trainer", [False,True])
+
+@pytest.mark.parametrize("modlee_trainer", [False, True])
 @pytest.mark.parametrize("num_samples", [100,200])
 @pytest.mark.parametrize("model_class", [
     SimpleTextToTextModel,
