@@ -45,13 +45,19 @@ class SimpleTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def configure_optimizers(self):
@@ -81,13 +87,19 @@ class ExtendedTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def configure_optimizers(self):
@@ -115,13 +127,19 @@ class SimplifiedTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def configure_optimizers(self):
@@ -152,13 +170,19 @@ class ResidualTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def training_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
         input_ids, targets = batch
         preds = self.forward(input_ids)  # Shape: (batch_size, max_length, vocab_size)
-        loss = torch.nn.CrossEntropyLoss()(preds.view(-1, self.vocab_size), targets.view(-1))
+        loss = torch.nn.CrossEntropyLoss(ignore_index=0)(  # Ignore padding token
+            preds.view(-1, self.vocab_size), 
+            targets.view(-1)
+        )
         return loss
 
     def configure_optimizers(self):
@@ -177,8 +201,27 @@ def test_text_to_text(modlee_trainer, num_samples, model_class):
     inputs, outputs = generate_synthetic_data(num_samples=num_samples)
 
     vocab = {word: idx for idx, word in enumerate(set(" ".join(inputs + outputs).split()))}
-    input_ids = [torch.tensor([vocab[word] for word in text.split()]) for text in inputs]
-    output_ids = [torch.tensor([vocab[word] for word in text.split()]) for text in outputs]
+    
+    pad_token_id = 0  # Define padding token ID
+    max_length = 20  # Fixed sequence length
+
+    # input_ids = [torch.tensor([vocab[word] for word in text.split()]) for text in inputs]
+    # output_ids = [torch.tensor([vocab[word] for word in text.split()]) for text in outputs]
+
+    input_ids = [
+        torch.tensor(
+            [vocab[word] for word in text.split()] + [pad_token_id] * (max_length - len(text.split())),
+            dtype=torch.long
+        )[:max_length] for text in inputs
+    ]
+
+    # Generate output_ids as token indices and flatten them
+    output_ids = [
+        torch.tensor(
+            [vocab[word] for word in text.split()] + [pad_token_id] * (max_length - len(text.split())),
+            dtype=torch.long
+        )[:max_length] for text in outputs
+    ]
 
     X_train, X_test, y_train, y_test = train_test_split(input_ids, output_ids, test_size=0.2)
 
@@ -200,8 +243,8 @@ def test_text_to_text(modlee_trainer, num_samples, model_class):
     test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
     train_dataloader.initial_tokenizer = tokenizer
 
-    model = model_class(vocab_size=len(vocab), max_length=max(len(seq) for seq in input_ids)).to(device)
-
+    #model = model_class(vocab_size=len(vocab), max_length=max(len(seq) for seq in input_ids)).to(device)
+    model = model_class(vocab_size=len(vocab), max_length=max_length).to(device)
     if modlee_trainer:
         trainer = modlee.model.trainer.AutoTrainer(max_epochs=50)
         trainer.fit(
