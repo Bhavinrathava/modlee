@@ -19,10 +19,12 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 num_samples_list = [100, 200]
 num_classes = 2
 modlee_trainer_list = [True, False]
+recommended_model_list = [True ,False]
 
 @pytest.mark.parametrize("num_samples", num_samples_list)
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
-def test_text_classification(num_samples, modlee_trainer):
+@pytest.mark.parametrize("recommended_model", recommended_model_list)
+def test_text_classification(num_samples, modlee_trainer, recommended_model):
     texts, labels = generate_dummy_text_classification_data(num_samples=num_samples, num_classes=num_classes)
     
     input_ids, attention_masks = tokenize_texts(texts, tokenizer)
@@ -47,7 +49,17 @@ def test_text_classification(num_samples, modlee_trainer):
 
     train_dataloader.initial_tokenizer = tokenizer
 
-    modlee_model = ModleeTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=num_classes, tokenizer=tokenizer).to(device)
+    if recommended_model == True:
+        recommender = modlee.recommender.from_modality_task(
+            modality='text',
+            task='classification', 
+            num_classes = 2
+            )
+        recommender.fit(train_dataloader)
+        modlee_model = recommender.model
+        print(f"\nRecommended model: \n{modlee_model}")
+    else:
+        modlee_model = ModleeTextClassificationModel(vocab_size=tokenizer.vocab_size, num_classes=num_classes, tokenizer=tokenizer).to(device)
 
     if modlee_trainer:
         trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)

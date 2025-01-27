@@ -57,7 +57,8 @@ class TextRecommender(Recommender):
             self.model = model_factory.get_model()
 
             self.model.data_mfe = self.metafeatures
-            self.code_text = self.get_code_text()
+            #Check if these are needed, might be reduntant
+            self.code_text = self.get_code_text() 
             self.model_code = modlee_converter.onnx_text2code(self.model_text)
 
             self.write_file(self.model_text, "./model.txt")
@@ -106,8 +107,25 @@ class TextTexttotextRecommender(TextRecommender):
     def __init__(self, vocab_size=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.task = "texttotext"
-        self.loss_fn = F.cross_entropy
+        self.loss_fn = CustomLoss()
         if vocab_size is None:
             raise ValueError("recommender.fit: vocab_size must be provided for modality='text', task='texttotext'.")
         
         self.vocab_size = vocab_size
+
+import torch.nn as nn
+
+class CustomLoss(nn.Module):
+    def __init__(self):
+        super(CustomLoss, self).__init__()
+        self.criterion = nn.CrossEntropyLoss()
+
+    def forward(self, y_out, y):
+        try:
+            loss = self.criterion(y_out, y)
+        except:
+            if not y_out.requires_grad:
+                y_out.requires_grad_(True)
+            loss = self.criterion(y_out.permute(0, 2, 1), y)
+        return loss
+

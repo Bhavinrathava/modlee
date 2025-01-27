@@ -37,6 +37,7 @@ python3 -m pytest tests/end2end_tests/test_timeseries_forecasting_real_data.py -
 python3 -m pytest tests/end2end_tests/test_image_regression_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_image_to_image_real_data_extended.py -k test
+python3 -m pytest tests/end2end_tests/test_image_segmentation_real_data.py -k test
 
 python3 -m pytest tests/end2end_tests/test_text_regression_real_data.py -k test
 python3 -m pytest tests/end2end_tests/test_text_classification_real_data.py -k test

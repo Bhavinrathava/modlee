@@ -15,7 +15,7 @@ device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
 
 modlee_trainer_list = [True, False]
-
+recommended_model_list = [True ,False]
 # Load and preprocess datasets
 def load_real_data(dataset_name):
     urls = {
@@ -50,7 +50,8 @@ def preprocess_time_series_data(df, column, seq_length, output_dim):
 @pytest.mark.parametrize("model_class", ['multivariate', 'transformer', 'sequential', 'linear'])
 @pytest.mark.parametrize("dataset_name", ['airline','shampoo', 'temps', 'sunspots', 'births'])
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
-def test_end2end_time_series_forecasting(model_class, dataset_name, modlee_trainer):
+@pytest.mark.parametrize("recommended_model", recommended_model_list)
+def test_end2end_time_series_forecasting(model_class, dataset_name, modlee_trainer, recommended_model):
     df, column = load_real_data(dataset_name)
     seq_length, output_dim = 30, 1
     X, y = preprocess_time_series_data(df, column, seq_length, output_dim)
@@ -72,8 +73,18 @@ def test_end2end_time_series_forecasting(model_class, dataset_name, modlee_train
     # 'linear': LinearTimeSeriesForecasterV2(input_dim=1, seq_length=seq_length, output_dim=output_dim, hidden_dim=128),
     # }
 
-
-    model = models[model_class].to(device)
+    if recommended_model == True:
+        recommender = modlee.recommender.from_modality_task(
+            modality='timeseries',
+            task='forecasting', 
+            prediction_length = 1
+            )
+        recommender.fit(train_dataloader)
+        model = recommender.model
+        print(f"\nRecommended model: \n{modlee_model}")
+    else:
+        model = models[model_class].to(device)
+        
     if modlee_trainer:
         trainer = modlee.model.trainer.AutoTrainer(max_epochs=40)
         trainer.fit(
@@ -97,4 +108,4 @@ def test_end2end_time_series_forecasting(model_class, dataset_name, modlee_train
     
 
 if __name__ == "__main__":
-    test_end2end_time_series_forecasting('multivariate', 'temps', False)
+    test_end2end_time_series_forecasting('multivariate', 'temps', False, False)

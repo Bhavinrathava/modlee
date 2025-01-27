@@ -14,11 +14,13 @@ modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/mod
 num_samples_list = [100, 200, 300]
 num_features_list = [10, 20, 50, 100]
 modlee_trainer_list = [True, False]
+recommended_model_list = [True,False]
 
 @pytest.mark.parametrize("num_samples", num_samples_list)
 @pytest.mark.parametrize("num_features", num_features_list)
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
-def test_tabular_regression(num_samples, num_features, modlee_trainer):    
+@pytest.mark.parametrize("recommended_model", recommended_model_list)
+def test_tabular_regression(num_samples, num_features, modlee_trainer, recommended_model):    
     X, y = generate_dummy_tabular_data_regression(num_samples=num_samples, num_features=num_features)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -28,7 +30,17 @@ def test_tabular_regression(num_samples, num_features, modlee_trainer):
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    modlee_model = TabularRegression(input_dim=num_features).to(device)
+    if recommended_model == True:
+
+        recommender = modlee.recommender.from_modality_task(
+            modality='tabular',
+            task='regression'
+            )
+        recommender.fit(train_dataloader)
+        modlee_model = recommender.model
+        print(f"\nRecommended model: \n{modlee_model}")
+    else:
+        modlee_model = TabularRegression(input_dim=num_features).to(device)
 
     if modlee_trainer:
         trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
@@ -51,4 +63,4 @@ def test_tabular_regression(num_samples, num_features, modlee_trainer):
     check_artifacts(artifacts_path)
 
 if __name__ == "__main__":
-    test_tabular_regression(100, 10, False)
+    test_tabular_regression(100, 10, False, False)

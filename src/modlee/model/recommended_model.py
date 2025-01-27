@@ -1,4 +1,5 @@
 from .model import *  # Assuming ModleeModel is your default parent
+#from .text_model import *
 import torch.nn.functional as F
 import torch
 from torch.optim import AdamW
@@ -27,7 +28,7 @@ class BaseRecommendedModel(ModleeModel):
     def validation_step(self, val_batch, batch_idx, *args, **kwargs):
         x, y = val_batch
         y_out = self(x)
-        loss = self.loss_fn(y_out, y)
+        loss = self.loss_fn(y_out, y) 
         return {"val_loss": loss}
 
     def configure_optimizers(self):
@@ -79,6 +80,8 @@ class RecommendedModelFactory:
         
         # Get the appropriate parent class based on modality and task if it exists
         parent_class_name = f"{self.modality.capitalize()}{self.task.capitalize()}ModleeModel"
+        #TODO base recommended model subclasses from pl.lightening, but parent_class_name does not. 
+        #might lead to bugs in the future. 
         ParentClass = globals().get(parent_class_name, BaseRecommendedModel)
         
         # Create the new class dynamically
@@ -101,12 +104,13 @@ class RecommendedModelFactory:
         Create the recommended model instance based on modality and task.
         """
         ModelClass = self._get_or_create_model_class()
+
         return ModelClass(
-            model=self.model,
-            loss_fn=self.loss_fn,
-            *self.args,
-            **self.kwargs
-        )
+                model=self.model,
+                loss_fn=self.loss_fn,
+                *self.args,
+                **self.kwargs
+            )
 
     def get_model(self):
         """

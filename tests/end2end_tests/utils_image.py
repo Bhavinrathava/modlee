@@ -9,6 +9,9 @@ from torch import nn
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 import os
+import random
+from torch.utils.data import Subset
+from torchvision import datasets, transforms
 '''
 
 IMAGE DATASETS
@@ -38,7 +41,7 @@ def add_noise(img, noise_level=0.1):
     noise = torch.randn_like(img) * noise_level
     return torch.clamp(img + noise, 0., 1.)
 
-class NoisyImageDataset(torch.utils.data.Dataset):
+class NoisyImageDataset(torch.utils.data.Dataset): 
     def __init__(self, dataset, noise_level=0.1, img_size=(1, 32, 32)):
         self.dataset = dataset
         self.noise_level = noise_level
@@ -66,6 +69,10 @@ def load_dataset(dataset_name, img_size, noise_level):
         transforms.ToTensor()
     ])
 
+    train_size = 10000
+
+    test_size=2000
+
     if dataset_name == "CIFAR10":
         train_dataset = datasets.CIFAR10(root="data", train=True, download=True, transform=transform)
         test_dataset = datasets.CIFAR10(root="data", train=False, download=True, transform=transform)
@@ -76,11 +83,18 @@ def load_dataset(dataset_name, img_size, noise_level):
         train_dataset = datasets.FashionMNIST(root="data", train=True, download=True, transform=transform)
         test_dataset = datasets.FashionMNIST(root="data", train=False, download=True, transform=transform)
 
-    train_noisy_dataset = NoisyImageDataset(train_dataset, noise_level=noise_level, img_size=img_size)
-    test_noisy_dataset = NoisyImageDataset(test_dataset, noise_level=noise_level, img_size=img_size)
+    train_indices = random.sample(range(len(train_dataset)), train_size)
+    test_indices = random.sample(range(len(test_dataset)), test_size)
+
+    # Create subset datasets
+    train_subset = Subset(train_dataset, train_indices)
+    test_subset = Subset(test_dataset, test_indices)
+
+    train_noisy_dataset = NoisyImageDataset(train_subset, noise_level=noise_level, img_size=img_size)
+    test_noisy_dataset = NoisyImageDataset(test_subset, noise_level=noise_level, img_size=img_size)
 
     return train_noisy_dataset, test_noisy_dataset
-
+    
 AGE_GROUPS = {'YOUNG': 0, 'MIDDLE': 1, 'OLD': 2}
 
 class AgeDataset(Dataset):
@@ -320,7 +334,142 @@ class ImageSegmentation(modlee.model.ImageSegmentationModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-class ModleeImageToImageModel(modlee.model.ImageImageToImageModleeModel):
+class ImageSegmentationV1(modlee.model.ImageSegmentationModleeModel):
+    def __init__(self, in_channels=3):
+        super().__init__()
+        # Encoder: Add more layers and dropout
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.1),  # Dropout for regularization
+            torch.nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+        )
+        # Decoder: Add symmetry to encoder
+        self.decoder = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+            torch.nn.ReLU(),
+            torch.nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(64, 1, kernel_size=1),
+        )
+        self.loss_fn = torch.nn.BCEWithLogitsLoss()  # Binary Cross-Entropy Loss
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        output_size = x.shape[2:]  # Resize to match input dimensions
+        decoded = torch.nn.functional.interpolate(decoded, size=output_size, mode='bilinear', align_corners=False)
+        return decoded
+
+    def training_step(self, batch):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss_fn(logits, y.float())
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss_fn(logits, y.float())
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class ImageSegmentationV2(modlee.model.ImageSegmentationModleeModel):
+    def __init__(self, in_channels=3):
+        super().__init__()
+        # Encoder with wider layers
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels, 128, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+        )
+        # Decoder with wider layers
+        self.decoder = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+            torch.nn.ReLU(),
+            torch.nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(64, 1, kernel_size=1),
+        )
+        self.loss_fn = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        decoded = torch.nn.functional.interpolate(decoded, size=x.shape[2:], mode='bilinear', align_corners=False)
+        return decoded
+
+    def training_step(self, batch):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss_fn(logits, y.float())
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss_fn(logits, y.float())
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class ImageSegmentationV3(modlee.model.ImageSegmentationModleeModel):
+    def __init__(self, in_channels=3):
+        super().__init__()
+        # Encoder with bottleneck
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+        )
+        # Bottleneck
+        self.bottleneck = torch.nn.Sequential(
+            torch.nn.Conv2d(256, 128, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+        )
+        # Decoder
+        self.decoder = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
+            torch.nn.ReLU(),
+            torch.nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(32, 1, kernel_size=1),
+        )
+        self.loss_fn = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        bottleneck = self.bottleneck(encoded)
+        decoded = self.decoder(bottleneck)
+        decoded = torch.nn.functional.interpolate(decoded, size=x.shape[2:], mode='bilinear', align_corners=False)
+        return decoded
+
+    def training_step(self, batch):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss_fn(logits, y.float())
+        return loss
+
+    def validation_step(self, batch):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss_fn(logits, y.float())
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class ModleeImageToImageModel(modlee.model.ImageImagetoimageModleeModel):
     def __init__(self, img_size=(3, 32, 32)):
         super().__init__()
         self.img_size = img_size
@@ -349,7 +498,7 @@ class ModleeImageToImageModel(modlee.model.ImageImageToImageModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=1e-3)
     
-class ModleeDenoisingModel(modlee.model.ImageImageToImageModleeModel):
+class ModleeDenoisingModel(modlee.model.ImageImagetoimageModleeModel):
     def __init__(self, img_size=(1, 32, 32)):
         super().__init__()
         self.img_size = img_size
@@ -379,7 +528,7 @@ class ModleeDenoisingModel(modlee.model.ImageImageToImageModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=1e-3)
 
-class AutoencoderDenoisingModel(modlee.model.ImageImageToImageModleeModel):
+class AutoencoderDenoisingModel(modlee.model.ImageImagetoimageModleeModel):
     def __init__(self, img_size=(1, 32, 32)):
         super().__init__()
         in_channels = img_size[0]
@@ -410,7 +559,7 @@ class AutoencoderDenoisingModel(modlee.model.ImageImageToImageModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=1e-3)
 
-class UNetDenoisingModel(modlee.model.ImageImageToImageModleeModel):
+class UNetDenoisingModel(modlee.model.ImageImagetoimageModleeModel):
     def __init__(self, img_size=(1, 32, 32)):
         super().__init__()
         in_channels = img_size[0]
@@ -439,7 +588,7 @@ class UNetDenoisingModel(modlee.model.ImageImageToImageModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=1e-3)
 
-class ResNetDenoisingModel(modlee.model.ImageImageToImageModleeModel):
+class ResNetDenoisingModel(modlee.model.ImageImagetoimageModleeModel):
     def __init__(self, img_size=(1, 32, 32)):
         super().__init__()
         in_channels = img_size[0]

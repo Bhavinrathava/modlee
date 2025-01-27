@@ -20,11 +20,13 @@ parameter_combinations = [
 
 modlee_trainer_list = [True, False]
 model_classes = ['multivariate', 'transformer']
+recommended_model_list = [True ,False]
 
 @pytest.mark.parametrize("model_class", model_classes)
 @pytest.mark.parametrize("num_features, seq_length, output_features", parameter_combinations)
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
-def test_time_series_forecasting(model_class, num_features, seq_length, output_features, modlee_trainer):
+@pytest.mark.parametrize("recommended_model", recommended_model_list)
+def test_time_series_forecasting(model_class, num_features, seq_length, output_features, modlee_trainer, recommended_model):
     X, y = generate_dummy_time_series_data_forecasting(num_samples=1000, seq_length=seq_length, num_features=num_features, output_features=output_features)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -33,11 +35,20 @@ def test_time_series_forecasting(model_class, num_features, seq_length, output_f
 
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-    
-    if model_class == 'multivariate':
-        model = TransformerTimeSeriesForecaster(input_dim=num_features, seq_length=seq_length, output_dim=output_features, nhead=1).to(device)
+    if recommended_model == True:
+    recommender = modlee.recommender.from_modality_task(
+        modality='timeseries',
+        task='forecasting', 
+        prediction_length = 1
+        )
+    recommender.fit(train_dataloader)
+    model = recommender.model
+    print(f"\nRecommended model: \n{modlee_model}")
     else:
-        model = MultivariateTimeSeriesForecaster(input_dim=num_features, seq_length=seq_length, output_dim=output_features).to(device)
+        if model_class == 'multivariate':
+            model = TransformerTimeSeriesForecaster(input_dim=num_features, seq_length=seq_length, output_dim=output_features, nhead=1).to(device)
+        else:
+            model = MultivariateTimeSeriesForecaster(input_dim=num_features, seq_length=seq_length, output_dim=output_features).to(device)
 
     if modlee_trainer:
         trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
@@ -60,4 +71,4 @@ def test_time_series_forecasting(model_class, num_features, seq_length, output_f
     check_artifacts(artifacts_path)
 
 if __name__ == "__main__":
-    test_time_series_forecasting(MultivariateTimeSeriesForecaster, 5, 10, 3)
+    test_time_series_forecasting(MultivariateTimeSeriesForecaster, 5, 10, 3, False)

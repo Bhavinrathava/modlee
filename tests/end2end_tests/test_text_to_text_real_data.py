@@ -96,6 +96,8 @@ def create_dataloaders(input_ids, decoder_input_ids, test_size=0.2, batch_size=1
 
     return train_dataloader, val_dataloader
 
+recommended_model_list = [True ,False]
+
 @pytest.mark.parametrize("model_type", ["transformer", "automodel"])
 @pytest.mark.parametrize("use_modlee_trainer", [True, False])
 @pytest.mark.parametrize("num_samples", [100, 200])

@@ -33,7 +33,7 @@ class ImageSegmentationModleeModel(ModleeModel):
     - Calculates data-specific data statistics
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
         """
         ImageSegmentationModleeModel constructor.
 
@@ -65,7 +65,7 @@ class ImageRegressionModleeModel(ModleeModel):
             kwargs_cache=vars_cache, *args, **kwargs
         )
 
-class ImageImageToImageModleeModel(ModleeModel):
+class ImageImagetoimageModleeModel(ModleeModel):
     """
     Subclass of ModleeModel with image-to-image-specific convenience wrappers.
     - Designed for tasks where both input and output are images, such as image translation, super-resolution, or denoising.
@@ -77,7 +77,7 @@ class ImageImageToImageModleeModel(ModleeModel):
         ImageToImageModleeModel constructor.
         """
         modality = "image"
-        task = "image-to-image"
+        task = "imagetoimage"
         vars_cache = {"modality": modality, "task": task}
         super().__init__(kwargs_cache=vars_cache, *args, **kwargs)
         

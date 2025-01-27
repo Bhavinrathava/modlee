@@ -781,7 +781,7 @@ def get_modality_task(obj):
     # obj_name = type(obj).__name__
     obj_name_q = [obj]
     MODALITIES = ["image", "text", "tabular", "timeseries"]
-    TASKS = ["classification", "regression", "segmentation", "forecasting", "texttotext"]
+    TASKS = ["classification", "regression", "segmentation", "forecasting", "texttotext", "imagetoimage"]
         
     while len(obj_name_q):
         # obj_name = type(obj_name_q.pop(0)).__name__

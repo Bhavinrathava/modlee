@@ -39,6 +39,10 @@ class ImageRecommender(Recommender):
         assert self.metafeatures is not None
         if hasattr(self, 'num_classes'):
             self.metafeatures.update({"num_classes": self.num_classes})
+        elif hasattr(self, 'img_size'):
+            self.metafeatures.update({"img_size": self.img_size})
+        elif hasattr(self, 'in_channels'):
+            self.metafeatures.update({"in_channels": self.in_channels})
 
         try:            
             self.model_text = self._get_model_text(self.metafeatures)
@@ -83,3 +87,33 @@ class ImageClassificationRecommender(ImageRecommender):
         if num_classes is None:
             raise ValueError("recommender.fit: num_classes must be provided when using for modality='image', task='classification'.")
         self.num_classes = num_classes
+
+class ImageImagetoimageRecommender(ImageRecommender):
+    """
+    Recommender for image imagetoimage tasks.
+    Uses mse loss.
+    """
+
+    def __init__(self, img_size=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.task = "imagetoimage"
+        self.loss_fn = F.mse_loss
+        # Check if img_size is set, raise ValueError with a professional error message
+        if img_size is None:
+            raise ValueError("recommender.fit: img_size must be provided when using for modality='image', task='imagetoimage'.")
+        self.img_size = img_size
+
+class ImageSegmentationRecommender(ImageRecommender):
+    """
+    Recommender for image sementation tasks.
+    Uses binary_cross_entropy_with_logits loss.
+    """
+
+    def __init__(self, in_channels=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.task = "segmentation"
+        self.loss_fn = F.binary_cross_entropy_with_logits
+        # Check if img_size is set, raise ValueError with a professional error message
+        if in_channels is None: #WHAT
+            raise ValueError("recommender.fit: in_channels must be provided when using for modality='image', task='segmentation'.")
+        self.in_channels = in_channels
