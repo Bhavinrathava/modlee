@@ -2,6 +2,7 @@ import modlee
 import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import torch.nn.functional as F
 
 
 '''
@@ -51,6 +52,12 @@ def load_real_data(dataset_name="amazon_polarity"):
         dataset = load_dataset("yelp_polarity", split='train[:80%]')
         texts = dataset['text']
         targets = dataset['label']  
+    elif dataset_name == "ag_news":
+
+        dataset = load_dataset("ag_news", split='train[:80%]')
+        texts = dataset['text']
+        targets = dataset['label']  
+    
     
     targets = [float(label) for label in targets]
 
@@ -94,7 +101,7 @@ class ModleeTextClassificationModel(modlee.model.TextClassificationModleeModel):
         )
         self.loss_fn = torch.nn.CrossEntropyLoss()
     
-    def forward(self, input_ids, attention_mask=None):
+    def forward(self, input_ids):
         if isinstance(input_ids, list):
             input_ids = torch.cat(input_ids, dim=0)
         embedded = self.embedding(input_ids)
@@ -104,14 +111,14 @@ class ModleeTextClassificationModel(modlee.model.TextClassificationModleeModel):
         return embedded
 
     def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch
-        preds = self.forward(input_ids, attention_mask)
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch
-        preds = self.forward(input_ids, attention_mask)
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
@@ -329,3 +336,497 @@ def tokenize_text2text(texts, target_texts, tokenizer, max_length=50):
     ], dim=1)
 
     return input_ids, attention_mask, decoder_input_ids
+    
+
+class CNNTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.conv1 = torch.nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1)
+        self.conv2 = torch.nn.Conv1d(128, 64, kernel_size=3, padding=1)
+        self.fc = torch.nn.Linear(64 * max_length, num_classes)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids):
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+    
+        
+        embedded = self.embedding(input_ids)
+        
+        # Reshape the embedded input if it's 4D
+        if embedded.dim() == 4:
+            batch_size, seq_len, num_words, embed_dim = embedded.shape
+            embedded = embedded.view(batch_size * seq_len, num_words, embed_dim)
+        
+        # Transpose the embedded input to [batch_size, embed_dim, sequence_length]
+        embedded = embedded.transpose(1, 2)
+        
+        x = torch.nn.functional.relu(self.conv1(embedded))
+        x = torch.nn.functional.relu(self.conv2(x))
+        x = x.flatten(start_dim=1)
+        return self.fc(x)
+
+    def training_step(self, batch, batch_idx):
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class MLPTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.fc1 = torch.nn.Linear(embed_dim * max_length, 256)
+        self.fc2 = torch.nn.Linear(256, 64)
+        self.fc3 = torch.nn.Linear(64, num_classes)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.max_length = max_length
+
+    def forward(self, input_ids):
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Ensure input_ids has the correct shape
+        if input_ids.dim() == 3:
+            input_ids = input_ids.view(-1, self.max_length)
+        
+        embedded = self.embedding(input_ids)
+        
+        # Ensure embedded has the correct shape
+        if embedded.shape[1] != self.max_length:
+            embedded = embedded[:, :self.max_length, :]
+        
+        embedded = embedded.flatten(start_dim=1)
+        x = torch.nn.functional.relu(self.fc1(embedded))
+        x = torch.nn.functional.relu(self.fc2(x))
+        return self.fc3(x)
+
+    def training_step(self, batch, batch_idx):
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class MultiConvTextClassificationModel(modlee.model.TextClassificationModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, num_classes=2, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        
+        # Multiple convolutional layers with different kernel sizes
+        self.conv1 = torch.nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1)
+        self.conv2 = torch.nn.Conv1d(embed_dim, 128, kernel_size=4, padding=1)
+        self.conv3 = torch.nn.Conv1d(embed_dim, 128, kernel_size=5, padding=2)
+        
+        # Global max pooling
+        self.global_max_pool = torch.nn.AdaptiveMaxPool1d(1)
+        
+        # Fully connected layers
+        self.fc1 = torch.nn.Linear(384, 256)  # 384 = 128 * 3 (output from 3 conv layers)
+        self.fc2 = torch.nn.Linear(256, num_classes)
+        
+        self.dropout = torch.nn.Dropout(0.5)
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+    def forward(self, input_ids):
+        # Ensure input_ids is a tensor
+        if not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Embedding layer
+        embedded = self.embedding(input_ids)
+        
+        # Reshape if necessary
+        if embedded.dim() == 4:
+            embedded = embedded.view(-1, embedded.size(-2), embedded.size(-1))
+        
+        embedded = embedded.transpose(1, 2)  # [batch_size, embed_dim, seq_len]
+        
+        # Apply convolutions and pooling
+        conv1 = self.global_max_pool(torch.nn.functional.relu(self.conv1(embedded)))
+        conv2 = self.global_max_pool(torch.nn.functional.relu(self.conv2(embedded)))
+        conv3 = self.global_max_pool(torch.nn.functional.relu(self.conv3(embedded)))
+        
+        # Concatenate pooled features and flatten
+        pooled = torch.cat((conv1, conv2, conv3), dim=1).flatten(1)
+        
+        # Fully connected layers
+        x = self.dropout(torch.nn.functional.relu(self.fc1(pooled)))
+        x = self.fc2(x)
+        
+        return x
+
+    def training_step(self, batch, batch_idx):
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, _, labels = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, labels)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+#############################################################
+
+class CNNTextRegressionModel(modlee.model.TextRegressionModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.conv1 = torch.nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1)
+        self.conv2 = torch.nn.Conv1d(128, 64, kernel_size=3, padding=1)
+        self.fc = torch.nn.Linear(64 * max_length, 1)  # Output size is 1 for regression
+        self.loss_fn = torch.nn.MSELoss()  # Mean Squared Error for regression tasks
+
+    def forward(self, input_ids):
+        # Ensure input is in tensor format
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        embedded = self.embedding(input_ids)
+        
+        # Reshape the embedded input if it's 4D
+        if embedded.dim() == 4:
+            batch_size, seq_len, num_words, embed_dim = embedded.shape
+            embedded = embedded.view(batch_size * seq_len, num_words, embed_dim)
+        
+        # Transpose the embedded input to [batch_size, embed_dim, sequence_length]
+        embedded = embedded.transpose(1, 2)
+        
+        # Pass through convolution layers
+        x = torch.nn.functional.relu(self.conv1(embedded))
+        x = torch.nn.functional.relu(self.conv2(x))
+        
+        # Flatten before passing to fully connected layer
+        x = x.view(x.size(0), -1)  # Flatten using view to avoid one-off squeeze
+        return self.fc(x)
+
+    def training_step(self, batch, batch_idx):
+        input_ids, _, targets = batch  # targets are continuous values
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, targets)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, _, targets = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, targets)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+class MultiConvTextRegressionModel(modlee.model.TextRegressionModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        
+        # Multiple convolutional layers with different kernel sizes
+        self.conv1 = torch.nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1)
+        self.conv2 = torch.nn.Conv1d(embed_dim, 128, kernel_size=4, padding=1)
+        self.conv3 = torch.nn.Conv1d(embed_dim, 128, kernel_size=5, padding=2)
+        
+        # Global max pooling
+        self.global_max_pool = torch.nn.AdaptiveMaxPool1d(1)
+        
+        # Fully connected layers
+        self.fc1 = torch.nn.Linear(384, 256)  # 384 = 128 * 3 (output from 3 conv layers)
+        self.fc2 = torch.nn.Linear(256, 1)    # Output is 1 for regression (continuous value)
+        
+        self.dropout = torch.nn.Dropout(0.5)
+        self.loss_fn = torch.nn.MSELoss()  # Mean Squared Error loss for regression
+
+    def forward(self, input_ids):
+        # Ensure input_ids is a tensor
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Embedding layer
+        embedded = self.embedding(input_ids)
+        
+        # Reshape if necessary
+        if embedded.dim() == 4:
+            batch_size, seq_len, num_words, embed_dim = embedded.shape
+            embedded = embedded.view(batch_size * seq_len, num_words, embed_dim)
+        
+        embedded = embedded.transpose(1, 2)  # [batch_size, embed_dim, seq_len]
+        
+        # Apply convolutions and pooling
+        conv1 = self.global_max_pool(torch.nn.functional.relu(self.conv1(embedded)))
+        conv2 = self.global_max_pool(torch.nn.functional.relu(self.conv2(embedded)))
+        conv3 = self.global_max_pool(torch.nn.functional.relu(self.conv3(embedded)))
+        
+        # Concatenate pooled features and flatten
+        pooled = torch.cat((conv1, conv2, conv3), dim=1)
+        pooled = pooled.flatten(start_dim=1)  # Flatten the concatenated pooled features
+
+        # Fully connected layers
+        x = self.dropout(torch.nn.functional.relu(self.fc1(pooled)))
+        x = self.fc2(x)
+        
+        return x
+
+    def training_step(self, batch, batch_idx):
+        input_ids, _, targets = batch  # targets are continuous values
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, targets)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, _, targets = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, targets)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class MLPTextRegressionModel(modlee.model.TextRegressionModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, tokenizer=None, max_length=20):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        self.fc1 = torch.nn.Linear(embed_dim * max_length, 256)
+        self.fc2 = torch.nn.Linear(256, 64)
+        self.fc3 = torch.nn.Linear(64, 1)  # Output is 1 for regression (continuous value)
+        self.loss_fn = torch.nn.MSELoss()  # Mean Squared Error loss for regression
+        self.max_length = max_length
+
+    def forward(self, input_ids):
+        # Ensure input_ids is a tensor
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Ensure input_ids has the correct shape
+        if input_ids.dim() == 3:
+            input_ids = input_ids.view(-1, self.max_length)
+
+        embedded = self.embedding(input_ids)
+        
+        # Ensure embedded has the correct shape
+        if embedded.shape[1] != self.max_length:
+            embedded = embedded[:, :self.max_length, :]
+        
+        embedded = embedded.flatten(start_dim=1)
+        x = torch.nn.functional.relu(self.fc1(embedded))
+        x = torch.nn.functional.relu(self.fc2(x))
+        return self.fc3(x)  # Output a single continuous value for regression
+
+    def training_step(self, batch, batch_idx):
+        input_ids, _, targets = batch  # targets are continuous values
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, targets)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, _, targets = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds, targets)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+"""
+class CNNTextRegressionModel(modlee.model.TextRegressionModleeModel):
+    def __init__(self, vocab_size, embed_dim=50, max_seq_length=20, num_filters=64, filter_sizes=(3, 4, 5), tokenizer=None):
+        super().__init__()
+        
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        
+        self.convs = torch.nn.ModuleList([
+            torch.nn.Conv1d(in_channels=embed_dim, out_channels=num_filters, kernel_size=fs)
+            for fs in filter_sizes
+        ])
+        
+        self.fc = torch.nn.Linear(len(filter_sizes) * num_filters, 1)
+        self.dropout = torch.nn.Dropout(0.5)
+        self.loss_fn = torch.nn.MSELoss()
+
+    def forward(self, input_ids):
+        if isinstance(input_ids, list):
+            input_ids = torch.cat(input_ids, dim=0)
+        
+        embedded = self.embedding(input_ids).transpose(1, 2)  # (batch, embed_dim, seq_len)
+        
+        pooled_results = []
+        for conv in self.convs:
+            conv_result = torch.nn.functional.relu(conv(embedded))
+            # Global max pooling
+            pooled = torch.max(conv_result, dim=2)[0]
+            pooled_results.append(pooled)
+        
+        cat = self.dropout(torch.cat(pooled_results, dim=1))
+        return self.fc(cat)
+
+
+    def training_step(self, batch, batch_idx):
+        input_ids, _, targets = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds.squeeze(), targets)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, _, targets = batch
+        preds = self.forward(input_ids)
+        loss = self.loss_fn(preds.squeeze(), targets)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+class FFNNTextRegressionModel(modlee.model.TextRegressionModleeModel):
+    def __init__(self, vocab_size, embed_dim=100, hidden_dims=[256, 128], dropout=0.5, tokenizer=None):
+        super().__init__()
+        
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        
+        layers = []
+        input_dim = embed_dim
+        for hidden_dim in hidden_dims:
+            layers.extend([
+                nn.Linear(input_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            ])
+            input_dim = hidden_dim
+        
+        layers.append(nn.Linear(input_dim, 1))
+        
+        self.ffnn = nn.Sequential(*layers)
+        self.loss_fn = nn.MSELoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        # Handle different input types
+        if isinstance(input_ids, list):
+            input_ids = [torch.tensor(ids, dtype=torch.long) if isinstance(ids, list) else ids for ids in input_ids]
+            input_ids = torch.stack(input_ids)
+        elif not isinstance(input_ids, torch.Tensor):
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+        
+        # Ensure input_ids is on the correct device
+        input_ids = input_ids.to(self.embedding.weight.device)
+        
+        # input_ids shape: (batch_size, seq_len)
+        embedded = self.embedding(input_ids)  # (batch_size, seq_len, embed_dim)
+        
+        # Average word embeddings
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(embedded.device)
+            embedded = embedded * attention_mask.unsqueeze(-1)
+            avg_embedded = embedded.sum(dim=1) / attention_mask.sum(dim=1, keepdim=True).clamp(min=1)
+        else:
+            avg_embedded = embedded.mean(dim=1)
+        
+        # Pass through FFNN
+        output = self.ffnn(avg_embedded)
+        return output
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, targets = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds.squeeze(), targets)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, targets = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds.squeeze(), targets)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+
+
+class BOWMLPTextRegressionModel(modlee.model.TextRegressionModleeModel):
+    def __init__(self, vocab_size, embed_dim=100, hidden_dims=[256, 128], dropout=0.5, tokenizer=None):
+        super().__init__()
+        
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
+        
+        layers = []
+        input_dim = embed_dim  # Changed from vocab_size to embed_dim
+        for hidden_dim in hidden_dims:
+            layers.extend([
+                nn.Linear(input_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            ])
+            input_dim = hidden_dim
+        
+        layers.append(nn.Linear(input_dim, 1))
+        
+        self.mlp = nn.Sequential(*layers)
+        self.loss_fn = nn.MSELoss()
+
+    def forward(self, input_ids, attention_mask=None):
+        if isinstance(input_ids, list):
+            input_ids = torch.stack([torch.tensor(ids, dtype=torch.long) for ids in input_ids])
+        
+        # Ensure input_ids is a 2D tensor
+        if input_ids.dim() > 2:
+            input_ids = input_ids.view(-1, input_ids.size(-1))
+        
+        # Create embedded representation
+        embedded = self.embedding(input_ids)
+        
+        # Average the embeddings
+        if attention_mask is not None:
+            attention_mask = attention_mask.float().unsqueeze(-1)
+            embedded = embedded * attention_mask
+            bow_avg = embedded.sum(dim=1) / attention_mask.sum(dim=1).clamp(min=1e-9)
+        else:
+            bow_avg = embedded.mean(dim=1)
+        
+        # Pass through MLP
+        output = self.mlp(bow_avg)
+        return output
+
+    def training_step(self, batch, batch_idx):
+        input_ids, attention_mask, targets = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds.squeeze(), targets)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids, attention_mask, targets = batch
+        preds = self.forward(input_ids, attention_mask)
+        loss = self.loss_fn(preds.squeeze(), targets)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+"""

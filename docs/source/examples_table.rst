@@ -62,3 +62,15 @@ This page offers a curated selection of examples organized by **Modality**, **Ta
      - Regression
      - `x <notebooks/time_series_regression.html>`__  
      - 
+   * - **Text**
+     - Classification 
+     - `x <notebooks/text_classification.html>`__
+     - 
+   * - 
+     - Regression
+     - `x <notebooks/text_regression.html>`__ 
+     - 
+   * - 
+     - Text2Text
+     - `x <notebooks/text_2_text.html>`__ 
+     - 
