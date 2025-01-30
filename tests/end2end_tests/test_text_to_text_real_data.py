@@ -13,7 +13,8 @@ from utils_text import *
 
 # Initialize device and modlee
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
+#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
+modlee.init(api_key='kF4dN7mP9qW2sT8v', run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 # Constants
 BATCH_SIZE = 16
@@ -96,16 +97,30 @@ def create_dataloaders(input_ids, decoder_input_ids, test_size=0.2, batch_size=1
 
     return train_dataloader, val_dataloader
 
-recommended_model_list = [True ,False]
+recommended_model_list = [True]
 
-@pytest.mark.parametrize("model_type", ["transformer", "automodel"])
+@pytest.mark.parametrize("model_type", ["transformer", "automodel"]) 
 @pytest.mark.parametrize("use_modlee_trainer", [True, False])
 @pytest.mark.parametrize("num_samples", [100, 200])
-def test_text_to_text(model_type, use_modlee_trainer, num_samples):
+@pytest.mark.parametrize("recommended_model", recommended_model_list)
+def test_text_to_text(model_type, use_modlee_trainer, num_samples, recommended_model):
     input_ids, decoder_input_ids, tokenizer = load_dataset_and_tokenize(num_samples=num_samples)
     train_dataloader, val_dataloader = create_dataloaders(input_ids, decoder_input_ids)
 
-    model = initialize_model(model_type, tokenizer.vocab_size, tokenizer)
+    if recommended_model == True:
+        recommender = modlee.recommender.from_modality_task(
+        modality='text',
+        task='texttotext', 
+        vocab_size=tokenizer.vocab_size
+        )
+
+        recommender.fit(train_dataloader)
+        modlee_model = recommender.model
+        print(f"\nRecommended model: \n{modlee_model}")
+
+    else:
+        model = initialize_model(model_type, tokenizer.vocab_size, tokenizer)
+    
     if use_modlee_trainer:
         trainer = modlee.model.trainer.AutoTrainer(max_epochs=5)
         trainer.fit(

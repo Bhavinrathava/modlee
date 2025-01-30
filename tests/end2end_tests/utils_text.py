@@ -18,8 +18,8 @@ def tokenize_texts(texts, tokenizer, max_length=20):
         add_special_tokens=True,  
     )
     
-    input_ids = encodings['input_ids'].to(torch.long) 
-    attention_mask = encodings['attention_mask'].to(torch.long) 
+    input_ids = encodings['input_ids']
+    attention_mask = encodings['attention_mask']
 
     return input_ids, attention_mask
 
@@ -52,7 +52,10 @@ def load_real_data(dataset_name="amazon_polarity"):
         texts = dataset['text']
         targets = dataset['label']  
     
+    targets = [float(label) for label in targets]
+
     return texts, targets
+
 
 def generate_dummy_text_regression_data(num_samples=100):
     example_texts = [
@@ -185,7 +188,7 @@ def initialize_model(model_type, vocab_size, tokenizer):
 
 import torch.nn as nn
 # Custom Transformer-based Seq2Seq model
-class TransformerSeq2SeqModel(modlee.model.TextTextToTextModleeModel):
+class TransformerSeq2SeqModel(modlee.model.TextTexttotextModleeModel):
     def __init__(self, vocab_size, d_model=512, nhead=8, num_encoder_layers=6, num_decoder_layers=6, max_length=50):
         super(TransformerSeq2SeqModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, d_model)
@@ -249,7 +252,7 @@ class TransformerSeq2SeqModel(modlee.model.TextTextToTextModleeModel):
         pos_enc[:, 1::2] = torch.cos(pos * angle_rates)
         return pos_enc
     
-class ModleeText2TextAutoModel(modlee.model.TextTextToTextModleeModel):
+class ModleeText2TextAutoModel(modlee.model.TextTexttotextModleeModel):
     def __init__(self, tokenizer, model_name="t5-small"):
         super().__init__()
         self.tokenizer = tokenizer

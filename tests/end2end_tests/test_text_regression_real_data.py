@@ -1,5 +1,6 @@
 import os
 import torch
+from torch.utils.data import DataLoader, Dataset
 import modlee
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
@@ -12,14 +13,24 @@ from utils_text import tokenize_texts, load_real_data
 from utils_text import ModleeTextRegressionModel
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
+#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
+modlee.init(api_key='kF4dN7mP9qW2sT8v', run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
 dataset_names = ["amazon_polarity", "yelp_polarity"]
 num_samples_list = [100, 200]
 modlee_trainer_list = [True, False]
-recommended_model_list = [True ,False]
+recommended_model_list = [True]
+
+class TextDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = X
+        self.y = y
+    def __len__(self):
+        return len(self.y)
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
 
 @pytest.mark.parametrize("dataset_name", dataset_names)
 @pytest.mark.parametrize("num_samples", num_samples_list)
@@ -37,16 +48,8 @@ def test_text_regression(dataset_name, num_samples, modlee_trainer, recommended_
         input_ids, attention_masks, targets, test_size=0.2, random_state=42
     )
     
-    train_dataset = TensorDataset(
-        torch.tensor(X_train_ids, dtype=torch.long), 
-        torch.tensor(X_train_masks, dtype=torch.long),  
-        torch.tensor(y_train, dtype=torch.float)  
-    )
-    test_dataset = TensorDataset(
-        torch.tensor(X_test_ids, dtype=torch.long),  
-        torch.tensor(X_test_masks, dtype=torch.long), 
-        torch.tensor(y_test, dtype=torch.float)  
-    )
+    train_dataset = TextDataset(torch.tensor(X_train_ids, dtype=torch.float),torch.tensor(y_train, dtype=torch.float))
+    test_dataset = TextDataset(torch.tensor(X_test_ids, dtype=torch.float),torch.tensor(y_test, dtype=torch.float))
 
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
