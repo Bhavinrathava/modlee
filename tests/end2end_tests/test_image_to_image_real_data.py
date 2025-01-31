@@ -8,7 +8,6 @@ from utils_image import load_dataset
 from utils_image import ModleeDenoisingModel
 
 device = get_device()
-#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 modlee.init(api_key='kF4dN7mP9qW2sT8v', run_path='/home/ubuntu/efs/modlee_pypi_testruns')
 
 modlee_trainer_list = [True, False]

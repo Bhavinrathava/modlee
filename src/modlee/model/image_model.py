@@ -33,7 +33,6 @@ class ImageSegmentationModleeModel(ModleeModel):
     - Calculates data-specific data statistics
     """
     def __init__(self, *args, **kwargs):
-        # super().__init__(*args, **kwargs)
         """
         ImageSegmentationModleeModel constructor.
 

@@ -8,14 +8,12 @@ from utils_image import load_dataset
 from utils_image import AutoencoderDenoisingModel, UNetDenoisingModel, ResNetDenoisingModel, ModleeDenoisingModel
 
 device = get_device()
-#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 modlee.init(api_key='kF4dN7mP9qW2sT8v', run_path='/home/ubuntu/efs/modlee_pypi_testruns')
-model_classes = [AutoencoderDenoisingModel]
-#AutoencoderDenoisingModel, UNetDenoisingModel, ResNetDenoisingModel, ModleeDenoisingModel]
+model_classes = [AutoencoderDenoisingModel, AutoencoderDenoisingModel, UNetDenoisingModel, ResNetDenoisingModel, ModleeDenoisingModel]
 recommended_model_list = [True,False]
 
 @pytest.mark.parametrize("noise_level", [0.1])
-@pytest.mark.parametrize("img_size", [(3, 28, 28)]) # (1, 32, 32),
+@pytest.mark.parametrize("img_size", [(1, 32, 32),(3, 28, 28)]) 
 @pytest.mark.parametrize("modlee_trainer", [False, True])
 @pytest.mark.parametrize("dataset_name", ["CIFAR10", "MNIST", "FashionMNIST"])
 @pytest.mark.parametrize("model_class", model_classes)

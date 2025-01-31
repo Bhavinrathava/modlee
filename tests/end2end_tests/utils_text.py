@@ -104,6 +104,7 @@ class ModleeTextClassificationModel(modlee.model.TextClassificationModleeModel):
     def forward(self, input_ids):
         if isinstance(input_ids, list):
             input_ids = torch.cat(input_ids, dim=0)
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         for layer in list(self.model.children())[1:]:  
             embedded = layer(embedded)
@@ -111,13 +112,13 @@ class ModleeTextClassificationModel(modlee.model.TextClassificationModleeModel):
         return embedded
 
     def training_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
@@ -143,21 +144,24 @@ class ModleeTextRegressionModel(modlee.model.TextRegressionModleeModel):
     def forward(self, input_ids, attention_mask=None):
         if isinstance(input_ids, list):
             input_ids = torch.cat(input_ids, dim=0)
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         for layer in list(self.model.children())[1:]:  
             embedded = layer(embedded)
         return embedded
 
     def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, targets = batch
-        preds = self.forward(input_ids, attention_mask)
-        loss = self.loss_fn(preds.squeeze(), targets)
+        input_ids, targets = batch
+        preds = self.forward(input_ids)
+        targets = targets.view(-1, 1)  
+        loss = self.loss_fn(preds, targets)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, targets = batch
-        preds = self.forward(input_ids, attention_mask)
-        loss = self.loss_fn(preds.squeeze(), targets)
+        input_ids, targets = batch
+        preds = self.forward(input_ids)
+        targets = targets.view(-1, 1)  
+        loss = self.loss_fn(preds, targets)
         return loss
 
     def configure_optimizers(self):
@@ -353,7 +357,7 @@ class CNNTextClassificationModel(modlee.model.TextClassificationModleeModel):
         elif not isinstance(input_ids, torch.Tensor):
             input_ids = torch.tensor(input_ids, dtype=torch.long)
     
-        
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         
         # Reshape the embedded input if it's 4D
@@ -370,13 +374,13 @@ class CNNTextClassificationModel(modlee.model.TextClassificationModleeModel):
         return self.fc(x)
 
     def training_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
@@ -403,7 +407,7 @@ class MLPTextClassificationModel(modlee.model.TextClassificationModleeModel):
         # Ensure input_ids has the correct shape
         if input_ids.dim() == 3:
             input_ids = input_ids.view(-1, self.max_length)
-        
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         
         # Ensure embedded has the correct shape
@@ -416,13 +420,13 @@ class MLPTextClassificationModel(modlee.model.TextClassificationModleeModel):
         return self.fc3(x)
 
     def training_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
@@ -456,6 +460,7 @@ class MultiConvTextClassificationModel(modlee.model.TextClassificationModleeMode
             input_ids = torch.tensor(input_ids, dtype=torch.long)
         
         # Embedding layer
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         
         # Reshape if necessary
@@ -479,13 +484,13 @@ class MultiConvTextClassificationModel(modlee.model.TextClassificationModleeMode
         return x
 
     def training_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, _, labels = batch
+        input_ids, labels = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, labels)
         return loss
@@ -510,7 +515,7 @@ class CNNTextRegressionModel(modlee.model.TextRegressionModleeModel):
             input_ids = torch.stack([torch.tensor(item, dtype=torch.long) for item in input_ids])
         elif not isinstance(input_ids, torch.Tensor):
             input_ids = torch.tensor(input_ids, dtype=torch.long)
-        
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         
         # Reshape the embedded input if it's 4D
@@ -530,13 +535,13 @@ class CNNTextRegressionModel(modlee.model.TextRegressionModleeModel):
         return self.fc(x)
 
     def training_step(self, batch, batch_idx):
-        input_ids, _, targets = batch  # targets are continuous values
+        input_ids, targets = batch  # targets are continuous values
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, targets)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, _, targets = batch
+        input_ids, targets = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, targets)
         return loss
@@ -573,6 +578,7 @@ class MultiConvTextRegressionModel(modlee.model.TextRegressionModleeModel):
             input_ids = torch.tensor(input_ids, dtype=torch.long)
         
         # Embedding layer
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         
         # Reshape if necessary
@@ -598,13 +604,13 @@ class MultiConvTextRegressionModel(modlee.model.TextRegressionModleeModel):
         return x
 
     def training_step(self, batch, batch_idx):
-        input_ids, _, targets = batch  # targets are continuous values
+        input_ids, targets = batch  # targets are continuous values
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, targets)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, _, targets = batch
+        input_ids, targets = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, targets)
         return loss
@@ -632,7 +638,7 @@ class MLPTextRegressionModel(modlee.model.TextRegressionModleeModel):
         # Ensure input_ids has the correct shape
         if input_ids.dim() == 3:
             input_ids = input_ids.view(-1, self.max_length)
-
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)
         
         # Ensure embedded has the correct shape
@@ -645,188 +651,16 @@ class MLPTextRegressionModel(modlee.model.TextRegressionModleeModel):
         return self.fc3(x)  # Output a single continuous value for regression
 
     def training_step(self, batch, batch_idx):
-        input_ids, _, targets = batch  # targets are continuous values
+        input_ids, targets = batch  # targets are continuous values
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, targets)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        input_ids, _, targets = batch
+        input_ids, targets = batch
         preds = self.forward(input_ids)
         loss = self.loss_fn(preds, targets)
         return loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
-
-
-"""
-class CNNTextRegressionModel(modlee.model.TextRegressionModleeModel):
-    def __init__(self, vocab_size, embed_dim=50, max_seq_length=20, num_filters=64, filter_sizes=(3, 4, 5), tokenizer=None):
-        super().__init__()
-        
-        self.embedding = torch.nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
-        
-        self.convs = torch.nn.ModuleList([
-            torch.nn.Conv1d(in_channels=embed_dim, out_channels=num_filters, kernel_size=fs)
-            for fs in filter_sizes
-        ])
-        
-        self.fc = torch.nn.Linear(len(filter_sizes) * num_filters, 1)
-        self.dropout = torch.nn.Dropout(0.5)
-        self.loss_fn = torch.nn.MSELoss()
-
-    def forward(self, input_ids):
-        if isinstance(input_ids, list):
-            input_ids = torch.cat(input_ids, dim=0)
-        
-        embedded = self.embedding(input_ids).transpose(1, 2)  # (batch, embed_dim, seq_len)
-        
-        pooled_results = []
-        for conv in self.convs:
-            conv_result = torch.nn.functional.relu(conv(embedded))
-            # Global max pooling
-            pooled = torch.max(conv_result, dim=2)[0]
-            pooled_results.append(pooled)
-        
-        cat = self.dropout(torch.cat(pooled_results, dim=1))
-        return self.fc(cat)
-
-
-    def training_step(self, batch, batch_idx):
-        input_ids, _, targets = batch
-        preds = self.forward(input_ids)
-        loss = self.loss_fn(preds.squeeze(), targets)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        input_ids, _, targets = batch
-        preds = self.forward(input_ids)
-        loss = self.loss_fn(preds.squeeze(), targets)
-        return loss
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
-
-class FFNNTextRegressionModel(modlee.model.TextRegressionModleeModel):
-    def __init__(self, vocab_size, embed_dim=100, hidden_dims=[256, 128], dropout=0.5, tokenizer=None):
-        super().__init__()
-        
-        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
-        
-        layers = []
-        input_dim = embed_dim
-        for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(input_dim, hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(dropout)
-            ])
-            input_dim = hidden_dim
-        
-        layers.append(nn.Linear(input_dim, 1))
-        
-        self.ffnn = nn.Sequential(*layers)
-        self.loss_fn = nn.MSELoss()
-
-    def forward(self, input_ids, attention_mask=None):
-        # Handle different input types
-        if isinstance(input_ids, list):
-            input_ids = [torch.tensor(ids, dtype=torch.long) if isinstance(ids, list) else ids for ids in input_ids]
-            input_ids = torch.stack(input_ids)
-        elif not isinstance(input_ids, torch.Tensor):
-            input_ids = torch.tensor(input_ids, dtype=torch.long)
-        
-        # Ensure input_ids is on the correct device
-        input_ids = input_ids.to(self.embedding.weight.device)
-        
-        # input_ids shape: (batch_size, seq_len)
-        embedded = self.embedding(input_ids)  # (batch_size, seq_len, embed_dim)
-        
-        # Average word embeddings
-        if attention_mask is not None:
-            attention_mask = attention_mask.to(embedded.device)
-            embedded = embedded * attention_mask.unsqueeze(-1)
-            avg_embedded = embedded.sum(dim=1) / attention_mask.sum(dim=1, keepdim=True).clamp(min=1)
-        else:
-            avg_embedded = embedded.mean(dim=1)
-        
-        # Pass through FFNN
-        output = self.ffnn(avg_embedded)
-        return output
-
-    def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, targets = batch
-        preds = self.forward(input_ids, attention_mask)
-        loss = self.loss_fn(preds.squeeze(), targets)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, targets = batch
-        preds = self.forward(input_ids, attention_mask)
-        loss = self.loss_fn(preds.squeeze(), targets)
-        return loss
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
-
-
-class BOWMLPTextRegressionModel(modlee.model.TextRegressionModleeModel):
-    def __init__(self, vocab_size, embed_dim=100, hidden_dims=[256, 128], dropout=0.5, tokenizer=None):
-        super().__init__()
-        
-        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=tokenizer.pad_token_id if tokenizer else None)
-        
-        layers = []
-        input_dim = embed_dim  # Changed from vocab_size to embed_dim
-        for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(input_dim, hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(dropout)
-            ])
-            input_dim = hidden_dim
-        
-        layers.append(nn.Linear(input_dim, 1))
-        
-        self.mlp = nn.Sequential(*layers)
-        self.loss_fn = nn.MSELoss()
-
-    def forward(self, input_ids, attention_mask=None):
-        if isinstance(input_ids, list):
-            input_ids = torch.stack([torch.tensor(ids, dtype=torch.long) for ids in input_ids])
-        
-        # Ensure input_ids is a 2D tensor
-        if input_ids.dim() > 2:
-            input_ids = input_ids.view(-1, input_ids.size(-1))
-        
-        # Create embedded representation
-        embedded = self.embedding(input_ids)
-        
-        # Average the embeddings
-        if attention_mask is not None:
-            attention_mask = attention_mask.float().unsqueeze(-1)
-            embedded = embedded * attention_mask
-            bow_avg = embedded.sum(dim=1) / attention_mask.sum(dim=1).clamp(min=1e-9)
-        else:
-            bow_avg = embedded.mean(dim=1)
-        
-        # Pass through MLP
-        output = self.mlp(bow_avg)
-        return output
-
-    def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, targets = batch
-        preds = self.forward(input_ids, attention_mask)
-        loss = self.loss_fn(preds.squeeze(), targets)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, targets = batch
-        preds = self.forward(input_ids, attention_mask)
-        loss = self.loss_fn(preds.squeeze(), targets)
-        return loss
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
-"""

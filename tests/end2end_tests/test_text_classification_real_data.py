@@ -11,25 +11,35 @@ from utils import get_device
 from utils_text import tokenize_texts, load_real_data
 from utils_text import ModleeTextClassificationModel, CNNTextClassificationModel, MLPTextClassificationModel, MultiConvTextClassificationModel
 
+class TextDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = X
+        self.y = y
+
+    def __len__(self):
+        return len(self.y)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
+
 
 device = get_device()
-#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 modlee.init(api_key='kF4dN7mP9qW2sT8v', run_path='/home/ubuntu/efs/modlee_pypi_testruns')
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
-dataset_names = ["ag_news","amazon_polarity", "yelp_polarity"]
+dataset_names = ["amazon_polarity", "yelp_polarity","ag_news"]
 num_samples_list = [100,200]
 modlee_trainer_list = [False,True]
-#model_list = [MultiConvTextClassificationModel]
 
 model_list = [ModleeTextClassificationModel, CNNTextClassificationModel, MLPTextClassificationModel, MultiConvTextClassificationModel]
-
+recommender_list = [True]
 @pytest.mark.parametrize("dataset_name", dataset_names)
 @pytest.mark.parametrize("num_samples", num_samples_list)
 @pytest.mark.parametrize("modlee_trainer", modlee_trainer_list)
 @pytest.mark.parametrize("model", model_list)
-def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
+@pytest.mark.parametrize("recommender", recommender_list)
+def test_text_classification(dataset_name, num_samples, modlee_trainer, model, recommender):
     texts, targets = load_real_data(dataset_name=dataset_name)
     
     texts = texts[:num_samples]
@@ -50,19 +60,28 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     train_dataloader.initial_tokenizer = tokenizer
 
-    if dataset_name == "ag_news":
-        if model == CNNTextClassificationModel or model == MultiConvTextClassificationModel:
-            modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer, max_length=20).to(device)
-        else:
-            modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer).to(device)
+    if recommender:
+        recommender = modlee.recommender.from_modality_task(
+            modality='text',
+            task='classification', 
+            num_classes = 2
+            )
+        recommender.fit(train_dataloader)
+        modlee_model = recommender.model
     else:
-        if model == CNNTextClassificationModel or model == MultiConvTextClassificationModel:
-            modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer, max_length=20).to(device)
+        if dataset_name == "ag_news":
+            if model == CNNTextClassificationModel or model == MultiConvTextClassificationModel:
+                modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer, max_length=20).to(device)
+            else:
+                modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=4, tokenizer=tokenizer).to(device)
         else:
-            modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
+            if model == CNNTextClassificationModel or model == MultiConvTextClassificationModel:
+                modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer, max_length=20).to(device)
+            else:
+                modlee_model = model(vocab_size=tokenizer.vocab_size, num_classes=2, tokenizer=tokenizer).to(device)
 
     if modlee_trainer:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=30)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
         trainer.fit(
             model=modlee_model,
             train_dataloaders=train_dataloader,
@@ -70,7 +89,7 @@ def test_text_classification(dataset_name, num_samples, modlee_trainer, model):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=30)
+            trainer = pl.Trainer(max_epochs=1)
             trainer.fit(
                 model=modlee_model,
                 train_dataloaders=train_dataloader,

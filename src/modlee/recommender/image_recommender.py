@@ -114,6 +114,6 @@ class ImageSegmentationRecommender(ImageRecommender):
         self.task = "segmentation"
         self.loss_fn = F.binary_cross_entropy_with_logits
         # Check if img_size is set, raise ValueError with a professional error message
-        if in_channels is None: #WHAT
+        if in_channels is None: 
             raise ValueError("recommender.fit: in_channels must be provided when using for modality='image', task='segmentation'.")
         self.in_channels = in_channels

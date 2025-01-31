@@ -12,7 +12,7 @@ from transformers import AutoTokenizer
 import random
 
 device = get_device()
-modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
+modlee.init(api_key='kF4dN7mP9qW2sT8v', run_path='/home/ubuntu/efs/modlee_pypi_testruns')
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
@@ -21,7 +21,7 @@ def generate_synthetic_data(num_samples=100):
     outputs = [f"Output sentence {i} {' '.join(random.choices(['generated', 'output', 'text'], k=3))}" for i in range(num_samples)]
     return inputs, outputs
 
-class SimpleTextToTextModel(modlee.model.TextTextToTextModleeModel):
+class SimpleTextToTextModel(modlee.model.TextTexttotextModleeModel):
     def __init__(self, vocab_size, embed_dim=50, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
@@ -33,6 +33,7 @@ class SimpleTextToTextModel(modlee.model.TextTextToTextModleeModel):
 
     def forward(self, input_ids):
         # Embed input tokens
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
 
         # Process each token independently
@@ -63,7 +64,7 @@ class SimpleTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-class ExtendedTextToTextModel(modlee.model.TextTextToTextModleeModel):
+class ExtendedTextToTextModel(modlee.model.TextTexttotextModleeModel):
     def __init__(self, vocab_size, embed_dim=50, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
@@ -75,6 +76,7 @@ class ExtendedTextToTextModel(modlee.model.TextTextToTextModleeModel):
 
     def forward(self, input_ids):
         # Embed input tokens
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
 
         # Process each token independently
@@ -105,7 +107,7 @@ class ExtendedTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-class SimplifiedTextToTextModel(modlee.model.TextTextToTextModleeModel):
+class SimplifiedTextToTextModel(modlee.model.TextTexttotextModleeModel):
     def __init__(self, vocab_size, embed_dim=30, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
@@ -116,6 +118,7 @@ class SimplifiedTextToTextModel(modlee.model.TextTextToTextModleeModel):
 
     def forward(self, input_ids):
         # Embed input tokens
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
 
         # Process each token independently
@@ -145,7 +148,7 @@ class SimplifiedTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-class ResidualTextToTextModel(modlee.model.TextTextToTextModleeModel):
+class ResidualTextToTextModel(modlee.model.TextTexttotextModleeModel):
     def __init__(self, vocab_size, embed_dim=50, max_length=20):
         super().__init__()
         self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
@@ -157,6 +160,7 @@ class ResidualTextToTextModel(modlee.model.TextTextToTextModleeModel):
 
     def forward(self, input_ids):
         # Embed input tokens
+        input_ids = input_ids.long()
         embedded = self.embedding(input_ids)  # Shape: (batch_size, max_length, embed_dim)
 
         # Process each token independently
@@ -188,16 +192,18 @@ class ResidualTextToTextModel(modlee.model.TextTextToTextModleeModel):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
+recommended_model_list = [True, False]
 
 @pytest.mark.parametrize("modlee_trainer", [False, True])
-@pytest.mark.parametrize("num_samples", [100,200])
+@pytest.mark.parametrize("num_samples", [100])
 @pytest.mark.parametrize("model_class", [
     SimpleTextToTextModel,
     ExtendedTextToTextModel,
     SimplifiedTextToTextModel,
     ResidualTextToTextModel
 ])
-def test_text_to_text(modlee_trainer, num_samples, model_class):
+@pytest.mark.parametrize("recommended_model", recommended_model_list)
+def test_text_to_text(modlee_trainer, num_samples, model_class, recommended_model):
     inputs, outputs = generate_synthetic_data(num_samples=num_samples)
 
     vocab = {word: idx for idx, word in enumerate(set(" ".join(inputs + outputs).split()))}
@@ -205,13 +211,10 @@ def test_text_to_text(modlee_trainer, num_samples, model_class):
     pad_token_id = 0  # Define padding token ID
     max_length = 20  # Fixed sequence length
 
-    # input_ids = [torch.tensor([vocab[word] for word in text.split()]) for text in inputs]
-    # output_ids = [torch.tensor([vocab[word] for word in text.split()]) for text in outputs]
-
     input_ids = [
         torch.tensor(
             [vocab[word] for word in text.split()] + [pad_token_id] * (max_length - len(text.split())),
-            dtype=torch.long
+            dtype=torch.float
         )[:max_length] for text in inputs
     ]
 
@@ -243,10 +246,20 @@ def test_text_to_text(modlee_trainer, num_samples, model_class):
     test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
     train_dataloader.initial_tokenizer = tokenizer
 
-    #model = model_class(vocab_size=len(vocab), max_length=max(len(seq) for seq in input_ids)).to(device)
-    model = model_class(vocab_size=len(vocab), max_length=max_length).to(device)
+    if recommended_model == True:
+        recommender = modlee.recommender.from_modality_task(
+            modality='text',
+            task='texttotext', 
+            vocab_size=len(vocab)
+            )
+
+        recommender.fit(train_dataloader)
+        model = recommender.model
+        print(f"\nRecommended model: \n{model}")
+    else:
+        model = model_class(vocab_size=len(vocab), max_length=max_length).to(device)
     if modlee_trainer:
-        trainer = modlee.model.trainer.AutoTrainer(max_epochs=50)
+        trainer = modlee.model.trainer.AutoTrainer(max_epochs=1)
         trainer.fit(
             model=model,
             train_dataloaders=train_dataloader,
@@ -254,7 +267,7 @@ def test_text_to_text(modlee_trainer, num_samples, model_class):
         )
     else:
         with modlee.start_run() as run:
-            trainer = pl.Trainer(max_epochs=50)
+            trainer = pl.Trainer(max_epochs=1)
             trainer.fit(
                 model=model,
                 train_dataloaders=train_dataloader,

@@ -9,7 +9,6 @@ from utils_timeseries import MultivariateTimeSeriesClassifier, TransformerTimeSe
 
 device = get_device()
 modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
-#MultivariateTimeSeriesClassifier, TransformerTimeSeriesClassifier
 modlee_trainer_list = [False]
 model_list = [MultivariateTimeSeriesClassifier]
 

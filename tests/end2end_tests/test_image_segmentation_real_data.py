@@ -108,7 +108,6 @@ def create_oxford_datasets():
     )
     return dataset, dataset  # Using same dataset for train and val for simplicity
 
-#create_pascal_datasets, create_oxford_datasets, create_cityscapes_datasets
 
 modlee_trainer_list = [False, True]
 # Pytest parameterization

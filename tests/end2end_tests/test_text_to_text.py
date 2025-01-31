@@ -57,17 +57,7 @@ class ModleeText2TextModel(modlee.model.TextTextToTextModleeModel):
         
         if decoder_input_ids is None:
             decoder_input_ids = input_ids 
-        
-        #decoder_input_ids = self.model._shift_right(decoder_input_ids)
-        #input_ids = input_ids.to('cpu')
-        type(input_ids)
-        #attention_mask = attention_mask.to('cpu')
 
-        type(attention_mask)
-        #decoder_input_ids = decoder_input_ids.to('cpu')
-
-        type(decoder_input_ids)
-        #self.model = self.model.to('cpu')
         outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, decoder_input_ids=decoder_input_ids)
         return outputs.logits
 

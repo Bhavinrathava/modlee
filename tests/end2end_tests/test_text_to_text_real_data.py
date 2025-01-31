@@ -13,7 +13,6 @@ from utils_text import *
 
 # Initialize device and modlee
 device = get_device()
-#modlee.init(api_key=os.getenv("MODLEE_API_KEY"), run_path='/home/ubuntu/efs/modlee_pypi_testruns')
 modlee.init(api_key='kF4dN7mP9qW2sT8v', run_path= '/home/ubuntu/efs/modlee_pypi_testruns')
 
 # Constants
